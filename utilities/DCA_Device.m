@@ -1,26 +1,29 @@
 classdef DCA_Device < handle
     properties
-        num
+        num                 % Indicates if the radar is 60 GHz (num=1) or 77 GHz (num=2)
         
-        prepareLamp
-        textArea
-        mmWaveStudioPath
+        prepareLamp         % Lamp in the GUI to indicate if the DCA is prepared
+        textArea            % Text area in the GUI for showing statuses
+        mmWaveStudioPath    % Path to the mmWave Studio installation
         
-        isPrepared
+        isPrepared          % Boolean whether or not the DCA is prepared
         
-        systemIPAddress
-        DCA1000IPAddress
-        configPort
-        dataPort
+        systemIPAddress     % System IP address of the DCA board as a string
+        DCA1000IPAddress    % DCA1000IP address as a string
+        configPort          % Configuration port as a string
+        dataPort            % Data port as a string
         
-        jsonFilePath
-        jsonString
+        jsonFilePath        % Path of the json file
+        jsonString          % json string to be written to the json file
     end
     methods
         function obj = DCA_Device(app,num)
             obj.num = num;
-            obj.textArea = app.MainTextArea;
-            obj.mmWaveStudioPath = app.mmWavePath;
+            
+            if ~isempty(app)
+                obj.textArea = app.MainTextArea;
+                obj.mmWaveStudioPath = app.mmWavePath;
+            end
             
             obj.isPrepared = false;
             obj.prepareLamp.Color = 'red';
@@ -138,6 +141,7 @@ classdef DCA_Device < handle
         function obj = Start(obj)
             if ~obj.isPrepared
                 obj.textArea.Value = "Prepare the DCAs before starting!";
+                disp(obj.textArea.Value)
                 return
             end
             
@@ -151,6 +155,7 @@ classdef DCA_Device < handle
             pause(0.05)
             !powershell Set-ExecutionPolicy -Scope CurrentUser Default
             obj.textArea.Value = "Press ""Stop Radar " + obj.num + """ to end capture";
+            disp(obj.textArea.Value)
             pause(0.1)
         end
         
@@ -165,6 +170,7 @@ classdef DCA_Device < handle
             pause(0.05)
             !powershell Set-ExecutionPolicy -Scope CurrentUser Default
             obj.textArea.Value = "Radar " + obj.num + " stopped";
+            disp(obj.textArea.Value)
             pause(0.1)
         end
     end

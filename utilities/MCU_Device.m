@@ -1,24 +1,21 @@
 classdef MCU_Device < handle
     properties
-        isConnected
-        isConfigured
-        COMPort
-        COMPortNum
+        isConnected = false     % Boolean whether or not the MCU is connected
+        isConfigured = false    % Boolean whether or not the MCU is configured
+        COMPortNum              % COM Port number of the MCU
         
-        connectionLamp
-        configurationLamp
-        textArea
+        connectionLamp          % Lamp in the GUI for the MCU connection
+        configurationLamp       % Lamp in the GUI for the MCU configuration
+        textArea                % Text area in the GUI for showing statuses
     end
     methods
         function obj = MCU_Device(app)
-            obj.textArea = app.MainTextArea;
-            
-            obj.isConnected = false;
-            obj.isConfigured = false;
-            obj.COMPort = 0;
+            if ~isempty(app)
+                obj.textArea = app.MainTextArea;
+            end
         end
         
-        function obj = SerialConnect(obj)
+        function obj = SerialConnect(obj,app)
             % Prompt and choose serial port for MCU
             serialList = serialportlist;
             [serialIdx,tf] = listdlg('PromptString','Select Microcontroller Port:','SelectionMode','single','ListString',serialList);
@@ -44,6 +41,4 @@ classdef MCU_Device < handle
             end
         end
     end
-    
-    
 end

@@ -10,10 +10,10 @@ Raw Data :
 Out of sequence count - 0
 Out of sequence seen from 0 to 0
 First Packet ID - 1
-Last Packet ID - 3049
-Number of received packets - 3049
+Last Packet ID - 483
+Number of received packets - 483
 Number of zero filled packets - 0
 Number of zero filled bytes - 0
-Capture start time - Wed Mar 24 10:36:21 2021
-Capture end time - Wed Mar 24 10:36:48 2021
-Duration(sec) - 27
+Capture start time - Tue May 11 18:11:44 2021
+Capture end time - Tue May 11 18:11:48 2021
+Duration(sec) - 4
