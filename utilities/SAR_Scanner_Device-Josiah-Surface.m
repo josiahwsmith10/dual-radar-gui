@@ -1,132 +1,75 @@
 classdef SAR_Scanner_Device < handle
-    properties        
-        amc                     % Motion controller (AMC4030_Device)
-        esp                     % Radar-scanner synchronizer microcontroller (ESP32_Device handle)
-        radar1                  % Radar 1 (TI_Radar_Device handle)
-        radar2                  % Radar 2 (TI_Radar_Device handle)
-        dca1                    % DCA1000EVM for radar 1 (DCA1000EVM_Device handle)
-        dca2                    % DCA1000EVM for radar 2 (DCA1000EVM_Device handle)
+    properties
+        textArea            % Text area in the GUI for showing statuses
+        xField              % Edit field in the GUI for current x-position
+        yField              % Edit field in the GUI for current y-position
+        tField              % Edit field in the GUI for current rotation-positon
         
-        fileName = "scan0"      % File name to save data to (without extension)
-        radarSelect = 1         % Radar selection (1 = radar 1 only, 2 = radar 2 only, 3 = radar 1 and radar 2)
+        motionController    % Motion controller (either AMC4030_Device or Drawer_Device)
+        sync                % Radar-scanner synchronizer microcontroller (ESP32_Device)
+        radar1              % Radar 1 (TI_Radar_Device)
+        radar2              % Radar 2 (TI_Radar_Device)
+        dca1                % DCA1000EVM for radar 1 (DCA1000EVM_Device)
+        dca2                % DCA1000EVM for radar 2 (DCA1000EVM_Device)
         
-        xStep_m = 0             % Step size in the x-direction in m
-        yStep_m = 0             % Step size in the y-direction in m
-        tStep_deg = 0           % Step size in the rotation-direction in deg
+        fileName = "scan0"  % File name to save data to (without extension)
         
-        numX = 0                % Number of x steps
-        numY = 0                % Number of y steps
-        numT = 0                % Number of rotation steps
-                
-        xMove_m = 0             % Size to move the radar platform in m
-        DeltaX_m = 0            % Separation between radars in the x-direction in m
-        xOffset_m = 0           % Offset in the x-direction in m
+        xStep_m = 0         % Step size in the x-direction in m
+        yStep_m = 0         % Step size in the y-direction in m
+        tStep_deg = 0       % Step size in the rotation-direction in deg
         
-        xMax_m                  % Maximum allowable distance in the x-direction in m
-        yMax_m                  % Maximum allowable distance in the y-direction in m
+        numX = 0            % Number of x steps
+        numY = 0            % Number of y steps
+        numT = 0            % Number of rotation steps
         
-        xSize_m = 0             % Aperture size in the x-direction in m
-        ySize_m = 0             % Aperture size in the y-direction in m
-        tSize_deg = 0           % Aperture size in the rotation-direction in deg
-                
-        isApp = false           % Boolean whether or not to use the GUI functionality
-        isConfigured = 0        % Boolean whether or not the scan has been configured
-        isScanning = false      % Boolean whether or not the scan is in progress
-        isTwoDirection = 1      % Boolean whether or not to do back and forth (two-direction) scanning
+        isConfigured = 0    % Boolean whether or not the scan has been configured
+        radarSelect = 1     % Radar selection (1 = radar 1 only, 2 = radar 2 only, 3 = radar 1 and radar 2)
         
-        pauseTol_s = 0.5        % Additional tolerance to wait for the horizontal scan in s
-        scanTime_min = 0        % Scan time in min
+        xMove_m = 0         % Size to move the radar platform in m
+        DeltaX_m = 0        % Separation between radars in the x-direction in m
+        xOffset_m = 0       % Offset in the x-direction in m
         
-        method = ""             % Type of scan, e.g. "Rectilinear"
+        xMax_m              % Maximum allowable distance in the x-direction in m
+        yMax_m              % Maximum allowable distance in the y-direction in m
         
-        % GUI related parameters
-        textArea                % Text area in the GUI for showing statuses
-        app                     % GUI object handle
+        xSize_m = 0         % Aperture size in the x-direction in m
+        ySize_m = 0         % Aperture size in the y-direction in m
+        tSize_deg = 0       % Aperture size in the rotation-direction in deg
         
-        % SAR scanner fields
-        fileName_field          % Edit field in the GUI for fileName
-        xStep_mm_field          % Edit field in the GUI for xStep in mm
-        yStep_mm_field          % Edit field in the GUI for yStep in mm
-        numX_field              % Edit field in the GUI for numX
-        numY_field              % Edit field in the GUI for numY
-        xMax_mm_field           % Edit field in the GUI for xMax in mm
-        yMax_mm_field           % Edit field in the GUI for yMax in mm
-        DeltaX_mm_field         % Edit field in the GUI for DeltaX in mm
-        xOffset_mm_field        % Edit field in the GUI for xOffset in mm
+        lambda_m = 0        % Wavelength of center frequency in m
         
-        % SAR scanner fields for display
-        xSize_mm_field          % Edit field in the GUI for xSize in mm
-        ySize_mm_field          % Edit field in the GUI for ySize in mm
-        scanTime_min_field      % Edit field in the GUI for scanTime_min
+        isScanning = false  % Boolean whether or not the scan is in progress
+        isTwoDirection = 1  % Boolean whether or not to do back and forth (two-direction) scanning
         
-        % Radar 1 and 2 checkboxes
-        isRadar1_checkbox       % Checkbox in GUI for radar1
-        isRadar2_checkbox       % Checkbox in GUI for radar2
+        pauseTol_s = 0.5    % Additional tolerance to wait for the horizontal scan in s
+        scanTime_min = 0    % Scan time in min
+        
+        method = ""         % Type of scan, e.g. "Rectilinear"
     end
     
     methods
-        function obj = SAR_Scanner_Device()            
-        end
-        
-        function Update(obj)
-            % Update the SAR_Scanner_Device
-            
-            if obj.isApp
-                obj.Get();
+        function obj = SAR_Scanner_Device(app,fc_GHz)
+            if ~isempty(app)
+                obj.textArea = app.MainTextArea;
             end
             
-            if obj.isApp
-                obj.Display();
-            end
+            obj.lambda_m = 299792458/(fc_GHz*1e9);
+            
+            obj.sync = ESP32_Device(app);
         end
         
-        function Get(obj)
-            % Attempts to get the values from the GUI
-            
-            if ~obj.isApp
-                obj.textArea.Value = "ERROR: isApp must be set to true to get the values!";
-                return;
-            end
-            
-            obj.fileName = obj.fileName_field.Value;
-            
-            obj.xStep_m = obj.xStep_mm_field.Value*1e-3;
-            obj.yStep_m = obj.yStep_mm_field.Value*1e-3;
-            
-            obj.numX = obj.numX_field.Value;
-            obj.numY = obj.numY_field.Value;
-            
-            obj.xMax_m = obj.xMax_mm_field.Value*1e-3;
-            obj.yMax_m = obj.yMax_mm_field.Value*1e-3;
-            
-            obj.DeltaX_m = obj.DeltaX_mm_field.Value*1e-3;
-            obj.xOffset_m = obj.xOffset_mm_field.Value*1e-3;
-            
-            obj.radarSelect = obj.isRadar1_checkbox.Value + 2*obj.isRadar2_checkbox.Value;
-        end
-        
-        function Display(obj)
-            % Attempt to display the values on the GUI
-            
-            if ~obj.isApp
-                obj.textArea.Value = "ERROR: isApp must be set to true to display the values!";
-                return;
-            end
-            
-            obj.xSize_mm_field.Value = obj.xSize_m*1e3;
-            obj.ySize_mm_field.Value = obj.ySize_m*1e3;
-            obj.scanTime_min_field.Value = obj.scanTime_min;
-        end
-        
-        function Configure(obj)
+        function obj = Configure(obj)
             % Configures the SAR_Scanner_Device
             
-            obj.amc.Configure();
-            obj.esp.Configure();
+            if ~obj.motionController.isConfigured
+                obj.textArea.Value = "Warning: Motion Controller is not configured yet!";
+            end
             
-            obj.Update();
+            if ~obj.sync.isConfigured
+                obj.textArea.Value = "Warning: Synchronizer is not configured yet!";
+            end
             
-            if obj.Verify(obj) == -1
+            if Verify(obj) == -1
                 obj.isConfigured = false;
                 obj.textArea.Value = "Could not configure scan. Cannot verify parameters";
                 return;
@@ -136,7 +79,7 @@ classdef SAR_Scanner_Device < handle
             obj.textArea.Value = "Scan configured";
         end
         
-        function Start(obj)
+        function obj = Start(obj)
             % Verifies the parameters and starts the SAR scan
             
             obj.Configure();
@@ -146,7 +89,7 @@ classdef SAR_Scanner_Device < handle
                 return;
             end
             
-            if obj.Verify() == -1
+            if Verify(obj) == -1
                 return;
             end
             
@@ -168,7 +111,7 @@ classdef SAR_Scanner_Device < handle
             
             switch obj.method
                 case "Rectilinear"
-                    if obj.VerifyRectilinear() == -1
+                    if VerifyRectilinear(obj) == -1
                         err = -1;
                         return;
                     end
@@ -218,20 +161,20 @@ classdef SAR_Scanner_Device < handle
             end
             
             % Time in minutes for two direction scanning
-            obj.scanTime_min = ((obj.numY-1)*obj.yStep_m*1e3/obj.amc.ver_speed_mms + ...
-                obj.numY*(obj.pauseTol_s + obj.xMove_m*1e3/obj.amc.hor_speed_mms))/60;
+            obj.scanTime_min = ((obj.numY-1)*obj.yStep_m*1e3/obj.motionController.ver_speed_mms + ...
+                obj.numY*(obj.pauseTol_s + obj.xMove_m*1e3/obj.motionController.hor_speed_mms))/60;
             
             err = 1;
             obj.textArea.Value = "Successfully verified rectilinear scan";
         end
         
-        function SingleCommand(obj,xMove_mm,yMove_mm)
+        function obj = SingleCommand(obj,xMove_mm,yMove_mm)
             
-            if ~obj.amc.isConnected
+            if ~obj.motionController.isConnected
                 obj.textArea.Value = "ERROR: Connect motion controller before starting scan!";
                 return;
             end
-            if ~obj.amc.isConfigured
+            if ~obj.motionController.isConfigured
                 obj.textArea.Value = "ERROR: Configure motion controller before starting scan!";
                 return;
             end
@@ -241,12 +184,12 @@ classdef SAR_Scanner_Device < handle
                 return;
             end
             
-            [err,wait_time_hor] = obj.amc.Move_Horizontal(xMove_mm);
+            [err,wait_time_hor] = obj.motionController.Move_Horizontal(xMove_mm,obj.xField);
             if err == -1
                 obj.textArea.Value = "ERROR! Horizontal movement failed!!";
             end
             
-            [err,wait_time_ver] = obj.amc.Move_Vertical(yMove_mm);
+            [err,wait_time_ver] = obj.motionController.Move_Vertical(yMove_mm,obj.yField);
             if err == -1
                 obj.textArea.Value = "ERROR! Vertical movement failed!!";
             end
@@ -254,24 +197,24 @@ classdef SAR_Scanner_Device < handle
             pause(max([wait_time_hor,wait_time_ver]));
         end
         
-        function RectilinearScanOLD(obj)
+        function obj = RectilinearScanOLD(obj)
             % Performs the Rectilinear Scan
             
-            if ~obj.amc.isConnected
+            if ~obj.motionController.isConnected
                 obj.textArea.Value = "ERROR: Connect motion controller before starting scan!";
                 return;
             end
-            if ~obj.amc.isConfigured
+            if ~obj.motionController.isConfigured
                 obj.textArea.Value = "ERROR: Configure motion controller before starting scan!";
                 return;
             end
             
-            if ~obj.esp.isConnected
+            if ~obj.sync.isConnected
                 obj.textArea.Value = "ERROR: Connect synchronizer before starting scan!";
                 return;
             end
             
-            if ~obj.esp.isConfigured
+            if ~obj.sync.isConfigured
                 obj.textArea.Value = "ERROR: Configure synchronizer before starting scan!";
                 return;
             end
@@ -310,7 +253,7 @@ classdef SAR_Scanner_Device < handle
                 return;
             end
             
-            if obj.esp.SendStart() ~= 1
+            if obj.sync.SendStart() ~= 1
                 obj.isScanning = false;
                 return
             end
@@ -319,8 +262,8 @@ classdef SAR_Scanner_Device < handle
             obj.textArea.Value = "Starting Rectilinear SAR Scan!";
             
             % Save the initial position in x and y
-            initial_x_mm = obj.amc.curr_hor_mm;
-            initial_y_mm = obj.amc.curr_ver_mm;
+            initial_x_mm = obj.motionController.curr_hor_mm;
+            initial_y_mm = obj.motionController.curr_ver_mm;
             
             xMove_mm = obj.xMove_m*1e3;
             
@@ -358,7 +301,7 @@ classdef SAR_Scanner_Device < handle
                 
                 obj.textArea.Value = "Iteration #" + indY + "/" + obj.numY;
                 
-                [err,wait_time] = obj.amc.Move_Horizontal(xMove_mm);
+                [err,wait_time] = obj.motionController.Move_Horizontal(xMove_mm,obj.xField);
                 if err ~= -1
                     pause(wait_time);
                 else
@@ -387,13 +330,13 @@ classdef SAR_Scanner_Device < handle
                 end
                 
                 % Check if ESP32 completed the correct number of triggers
-                if obj.esp.CheckHorDone() ~= 1
+                if obj.sync.CheckHorDone() ~= 1
                     obj.isScanning = false;
                     return;
                 end
                 
                 % Do the vertical movement
-                [err,wait_time] = obj.amc.Move_Vertical(obj.yStep_m*1e3);
+                [err,wait_time] = obj.motionController.Move_Vertical(obj.yStep_m*1e3,obj.yField);
                 if err ~= -1
                     pause(wait_time);
                 else
@@ -418,7 +361,7 @@ classdef SAR_Scanner_Device < handle
                 
                 % Send sarNext command to ESP32 to start next horizontal
                 % movement
-                if obj.esp.SendNext() ~= 1
+                if obj.sync.SendNext() ~= 1
                     obj.isScanning = false;
                     return;
                 end
@@ -434,25 +377,25 @@ classdef SAR_Scanner_Device < handle
             end
             
             % Send sarNext command to ESP32 to end
-            if obj.esp.SendNext() ~= 1
+            if obj.sync.SendNext() ~= 1
                 obj.isScanning = false;
                 return;
             end
             
             % Move back to initial position
-            [err,wait_time_hor] = obj.amc.Move_Horizontal(initial_x_mm - obj.amc.curr_hor_mm);
+            [err,wait_time_hor] = obj.motionController.Move_Horizontal(initial_x_mm - obj.motionController.curr_hor_mm,obj.xField);
             if err == -1
                 obj.textArea.Value = "ERROR! Horizontal movement (returning to initial position) failed!!";
             end
             
-            [err,wait_time_ver] = obj.amc.Move_Vertical(initial_y_mm - obj.amc.curr_ver_mm);
+            [err,wait_time_ver] = obj.motionController.Move_Vertical(initial_y_mm - obj.motionController.curr_ver_mm,obj.yField);
             if err == -1
                 obj.textArea.Value = "ERROR! Vertical movement (returning to initial position) failed!!";
             end
             
             pause(max([wait_time_hor,wait_time_ver]));
             % Check if ESP32 completed the correct number of triggers
-            if obj.esp.CheckScanDone() ~= 1
+            if obj.sync.CheckScanDone() ~= 1
                 obj.isScanning = false;
                 return;
             end
@@ -460,25 +403,26 @@ classdef SAR_Scanner_Device < handle
             obj.isScanning = false;
             obj.textArea.Value = "Rectilinear Scan Done!";
         end
-                
-        function RectilinearScan(obj)
+        
+        
+        function obj = RectilinearScan(obj)
             % Performs the Rectilinear Scan
             
-            if ~obj.amc.isConnected
+            if ~obj.motionController.isConnected
                 obj.textArea.Value = "ERROR: Connect motion controller before starting scan!";
                 return;
             end
-            if ~obj.amc.isConfigured
+            if ~obj.motionController.isConfigured
                 obj.textArea.Value = "ERROR: Configure motion controller before starting scan!";
                 return;
             end
             
-            if ~obj.esp.isConnected
+            if ~obj.sync.isConnected
                 obj.textArea.Value = "ERROR: Connect synchronizer before starting scan!";
                 return;
             end
             
-            if ~obj.esp.isConfigured
+            if ~obj.sync.isConfigured
                 obj.textArea.Value = "ERROR: Configure synchronizer before starting scan!";
                 return;
             end
@@ -519,7 +463,7 @@ classdef SAR_Scanner_Device < handle
             end
             
             % Send start command to synchronizer
-            if obj.esp.SendStart() ~= 1
+            if obj.sync.SendStart() ~= 1
                 obj.isScanning = false;
                 return
             end
@@ -528,12 +472,9 @@ classdef SAR_Scanner_Device < handle
             obj.isScanning = true;
             obj.textArea.Value = "Starting Rectilinear SAR Scan!";
             
-            % Create directory to save files
-            mkdir(cd + "\data\" + obj.fileName);
-            
             % Save the initial position in x and y
-            initial_x_mm = obj.amc.curr_hor_mm;
-            initial_y_mm = obj.amc.curr_ver_mm;
+            initial_x_mm = obj.motionController.curr_hor_mm;
+            initial_y_mm = obj.motionController.curr_ver_mm;
             
             xMove_mm = obj.xMove_m*1e3;
             
@@ -548,7 +489,7 @@ classdef SAR_Scanner_Device < handle
                 obj.textArea.Value = "Iteration #" + (indLap*2-1) + "/" + obj.numY;
                 
                 % Do the horizontal movement
-                [err,wait_time] = obj.amc.Move_Horizontal(xMove_mm);
+                [err,wait_time] = obj.motionController.Move_Horizontal(xMove_mm,obj.xField);
                 if err ~= -1
                     pause(wait_time);
                 else
@@ -560,7 +501,7 @@ classdef SAR_Scanner_Device < handle
                 %pause(obj.pauseTol_s);
                 
                 % Check if ESP32 completed the correct number of triggers
-                if obj.esp.CheckUpDone() ~= 1
+                if obj.sync.CheckUpDone() ~= 1
                     obj.isScanning = false;
                     return;
                 end
@@ -571,7 +512,7 @@ classdef SAR_Scanner_Device < handle
                 pause(obj.pauseTol_s)
                 
                 % Do the vertical movement
-                [err,wait_time] = obj.amc.Move_Vertical(obj.yStep_m*1e3);
+                [err,wait_time] = obj.motionController.Move_Vertical(obj.yStep_m*1e3,obj.yField);
                 if err ~= -1
                     pause(wait_time);
                 else
@@ -582,7 +523,7 @@ classdef SAR_Scanner_Device < handle
                 
                 % Send sarNextUp command to ESP32 to start next horizontal
                 % movement
-                if obj.esp.SendNextUp() ~= 1
+                if obj.sync.SendNextUp() ~= 1
                     obj.isScanning = false;
                     return;
                 end
@@ -590,11 +531,13 @@ classdef SAR_Scanner_Device < handle
                 % Start the radars
                 obj.StartRadars(indLap*2)
                 
+                pause(obj.pauseTol_s)
+                
                 % Show iteration number on text area
                 obj.textArea.Value = "Iteration #" + indLap*2 + "/" + obj.numY;
                 
                 % Do the horizontal movement
-                [err,wait_time] = obj.amc.Move_Horizontal(-xMove_mm);
+                [err,wait_time] = obj.motionController.Move_Horizontal(-xMove_mm,obj.xField);
                 if err ~= -1
                     pause(wait_time);
                 else
@@ -606,7 +549,7 @@ classdef SAR_Scanner_Device < handle
                 %pause(obj.pauseTol_s);
                 
                 % Check if ESP32 completed the correct number of triggers
-                if obj.esp.CheckDownDone() ~= 1
+                if obj.sync.CheckDownDone() ~= 1
                     obj.isScanning = false;
                     return;
                 end
@@ -614,13 +557,15 @@ classdef SAR_Scanner_Device < handle
                 % Stop the radars
                 obj.StopRadars();
                 
+                pause(obj.pauseTol_s)
+                
                 % If we are on the last iteration, exit immediately
                 if indLap == ceil(obj.numY/2)
                     break
                 end
                 
                 % Do the vertical movement
-                [err,wait_time] = obj.amc.Move_Vertical(obj.yStep_m*1e3);
+                [err,wait_time] = obj.motionController.Move_Vertical(obj.yStep_m*1e3,obj.yField);
                 if err ~= -1
                     pause(wait_time);
                 else
@@ -631,25 +576,25 @@ classdef SAR_Scanner_Device < handle
                 
                 % Send sarNextDown command to ESP32 to start next horizontal
                 % movement
-                if obj.esp.SendNextDown() ~= 1
+                if obj.sync.SendNextDown() ~= 1
                     obj.isScanning = false;
                     return;
                 end
             end
             
             % Check if ESP32 completed the correct number of triggers
-            if obj.esp.CheckScanDone() ~= 1
+            if obj.sync.CheckScanDone() ~= 1
                 obj.isScanning = false;
                 return;
             end
             
             % Move back to initial position
-            [err,wait_time_hor] = obj.amc.Move_Horizontal(initial_x_mm - obj.amc.curr_hor_mm);
+            [err,wait_time_hor] = obj.motionController.Move_Horizontal(initial_x_mm - obj.motionController.curr_hor_mm,obj.xField);
             if err == -1
                 obj.textArea.Value = "ERROR! Horizontal movement (returning to initial position) failed!!";
             end
             
-            [err,wait_time_ver] = obj.amc.Move_Vertical(initial_y_mm - obj.amc.curr_ver_mm);
+            [err,wait_time_ver] = obj.motionController.Move_Vertical(initial_y_mm - obj.motionController.curr_ver_mm,obj.yField);
             if err == -1
                 obj.textArea.Value = "ERROR! Vertical movement (returning to initial position) failed!!";
             end
@@ -661,47 +606,29 @@ classdef SAR_Scanner_Device < handle
         end
         
         function StartRadars(obj,ind)
-%             Lua_String = 'ar1.StopFrame()';
-%             ErrStatus = RtttNetClientAPI.RtttNetClient.SendCommand(Lua_String);
-%             
-            pause(1);
-            RSTD_DLL_Path = 'C:\ti\mmwave_studio_02_01_01_00\mmWaveStudio\Clients\RtttNetClientController\RtttNetClientAPI.dll';
-            ErrStatus = Init_RSTD_Connection(RSTD_DLL_Path);
-            Lua_String = "ar1.CaptureCardConfig_StartRecord("""+strrep(cd + "\data\" + obj.fileName + "\" + obj.fileName + "_" + ind + ".bin","\","\\")+""", 0)";
-            ErrStatus = RtttNetClientAPI.RtttNetClient.SendCommand(Lua_String);
-%             ErrStatus = RtttNetClientAPI.RtttNetClient.SendCommand(Lua_String);
-            
 %             if obj.radarSelect == 1 || obj.radarSelect == 3
-%                 obj.dca1.folderName = obj.fileName;
 %                 obj.dca1.fileName = obj.fileName + "_" + ind;
 %                 obj.dca1.Prepare();
 %                 obj.dca1.Start();
-%                 if mod(ind-1,4) == 0
-%                     obj.radar1.Start();
-                    Lua_String = 'ar1.StartFrame()';
-                    ErrStatus = RtttNetClientAPI.RtttNetClient.SendCommand(Lua_String);
-%                 end
+%                 obj.radar1.Start();
 %             end
 %             
 %             if obj.radarSelect == 2 || obj.radarSelect == 3
-%                 obj.dca2.folderName = obj.fileName;
 %                 obj.dca2.fileName = obj.fileName + "_" + ind;
 %                 obj.dca2.Prepare();
 %                 obj.dca2.Start();
-%                 if mod(ind-1,4) == 0
-%                     obj.radar2.Start();
-%                 end
+%                 obj.radar2.Start();
 %             end
-%             
-            pause(1);
         end
         
         function StopRadars(obj)
 %             if obj.radarSelect == 1 || obj.radarSelect == 3
+%                 obj.radar1.Stop();
 %                 obj.dca1.Stop();
 %             end
 %             
 %             if obj.radarSelect == 2 || obj.radarSelect == 3
+%                 obj.radar2.Stop();
 %                 obj.dca2.Stop();
 %             end
         end

@@ -1,92 +1,67 @@
 classdef DCA_Device < handle
     properties
-        isApp = false           % Boolean whether or not to use the GUI functionality
-        num                     % Indicates if the radar is 60 GHz (num=1) or 77 GHz (num=2)
+        num                 % Indicates if the radar is 60 GHz (num=1) or 77 GHz (num=2)
         
-        isPrepared = false      % Boolean whether or not the DCA is prepared
+        prepareLamp         % Lamp in the GUI to indicate if the DCA is prepared
+        textArea            % Text area in the GUI for showing statuses
+        mmWaveStudioPath    % Path to the mmWave Studio installation
         
-        systemIPAddress         % System IP address of the DCA board as a string
-        DCA1000IPAddress        % DCA1000IP address as a string
-        configPort              % Configuration port as a string
-        dataPort                % Data port as a string
+        isPrepared          % Boolean whether or not the DCA is prepared
         
-        jsonFilePath            % Path of the json file
-        jsonString              % json string to be written to the json file
-        fileName                % File name to save data to (without extension)
-        folderName = "test"     % Folder name to save data to
+        systemIPAddress     % System IP address of the DCA board as a string
+        DCA1000IPAddress    % DCA1000IP address as a string
+        configPort          % Configuration port as a string
+        dataPort            % Data port as a string
         
-        % GUI related parameters
-        prepareLamp             % Lamp in the GUI to indicate if the DCA is prepared
-        textArea                % Text area in the GUI for showing statuses
-        app                         % GUI object handle
-        
-        % DCA fields
-        mmWaveStudioPath        % Path to the mmWave Studio installation
-        systemIPAddress_field   % Edit field in the GUI for the system IP address
-        DCA1000IPAddress_field  % Edit field in the GUI for the DCA IP address
-        configPort_field        % Edit field in the GUI for the configuration port
-        dataPort_field          % Edit field in the GUI for the data port
-        fileName_field          % Edit field in the GUI for the file name
+        jsonFilePath        % Path of the json file
+        jsonString          % json string to be written to the json file
+        fileName            % File name to save data to (without extension)
     end
-    
     methods
-        function obj = DCA_Device(num)
+        function obj = DCA_Device(app,num)
             obj.num = num;
-        end
-        
-        function Update(obj)
-            % Update the DCA_Device
             
-            if obj.isApp
-                obj.Get();
-            end
-        end
-        
-        function Get(obj)
-            % Attempts to get the values from the GUI
-            
-            if ~obj.isApp
-                obj.textArea.Value = "ERROR: isApp must be set to true to get the values!";
-                return;
+            if ~isempty(app)
+                obj.textArea = app.MainTextArea;
+                obj.mmWaveStudioPath = app.mmWavePath;
             end
             
-            obj.systemIPAddress = obj.systemIPAddress_field.Value;
-            obj.DCA1000IPAddress = obj.DCA1000IPAddress_field.Value;
-            obj.configPort = obj.configPort_field.Value;
-            obj.dataPort = obj.dataPort_field.Value;
-            obj.fileName = obj.fileName_field.Value;
+            obj.isPrepared = false;
+            obj.prepareLamp.Color = 'red';
         end
         
-        function Prepare(obj)
-            % Prepare the DCA1000EVM (create cf<num>.json config file)
-            
-            obj.Update();
-            
+        function obj = StartDataReader(obj)
+            system("start ./include/dca1000evm_udp_interface.exe " + app.ADCSamplesEditField.Value + " " + 8 + " " + 1 + " " + ".\data\" + string(app.Params.fileName));
+        end
+        
+        function obj = Prepare(obj)
             obj.jsonFilePath = obj.mmWaveStudioPath + "\PostProc\cf" + obj.num + ".json";
             
-            obj.CreateJSONString();
-            obj.CreateJSON();
+            obj = CreateJSONString(obj);
+            obj = CreateJSON(obj);
             
-            obj.CreateDCAStartPS();
-            obj.CreateDCAStopPS();
+            obj = CreateDCAStartPS(obj);
+            obj = CreateDCAStopPS(obj);
             obj.isPrepared = true;
             obj.prepareLamp.Color = 'green';
         end
         
-        function CreateJSON(obj)
+        function obj = CreateJSON(obj)
             fid = fopen(obj.jsonFilePath,"wt");
             
             if fid == -1
                 obj.textArea.Value = "Error opening json file at " + obj.jsonFilePath;
             end
             
-            % Print the json string
-            fprintf(fid,'%s\n',obj.jsonString);
+            % Print every line of the json string
+            for indLine = 1:length(obj.jsonString)
+                fprintf(fid,'%s\n',obj.jsonString(indLine));
+            end
             
             fclose(fid);
         end
         
-        function CreateJSONString(obj)
+        function obj = CreateJSONString(obj)
             obj.jsonString = ["{"
                 "  ""DCA1000Config"": {"
                 "    ""dataLoggingMode"": ""raw"","
@@ -108,23 +83,23 @@ classdef DCA_Device < handle
                 "      ""DCA1000DataPort"": " + obj.dataPort + ""
                 "    },"
                 "    ""captureConfig"": {"
-                "      ""fileBasePath"": """ + strrep(cd + "\data\" + obj.folderName,"\","\\") + ""","
+                "      ""fileBasePath"": """ + strrep(cd + "\data","\","\\") + ""","
                 "      ""filePrefix"": """ + obj.fileName + ""","
                 "      ""maxRecFileSize_MB"": 1024,"
-                "      ""sequenceNumberEnable"": 0,"
+                "      ""sequenceNumberEnable"": 1,"
                 "      ""captureStopMode"": ""infinite"","
-                "      ""bytesToCapture"": 4000,"
-                "      ""durationToCapture_ms"": 4000,"
-                "      ""framesToCapture"": 40"
+                "      ""bytesToCapture"": 8388608,"
+                "      ""durationToCapture_ms"": 40000,"
+                "      ""framesToCapture"": 256"
                 "    },"
                 "    ""dataFormatConfig"": {"
                 "      ""MSBToggle"": 0,"
                 "      ""laneFmtMap"": 0,"
-                "      ""reorderEnable"": 0,"
+                "      ""reorderEnable"": 1,"
                 "      ""dataPortConfig"": ["
                 "        {"
                 "          ""portIdx"": 0,"
-                "          ""dataType"": ""real"""
+                "          ""dataType"": ""complex"""
                 "        },"
                 "        {"
                 "          ""portIdx"": 1,"
@@ -132,11 +107,11 @@ classdef DCA_Device < handle
                 "        },"
                 "        {"
                 "          ""portIdx"": 2,"
-                "          ""dataType"": ""real"""
+                "          ""dataType"": ""complex"""
                 "        },"
                 "        {"
                 "          ""portIdx"": 3,"
-                "          ""dataType"": ""real"""
+                "          ""dataType"": ""complex"""
                 "        },"
                 "        {"
                 "          ""portIdx"": 4,"
@@ -148,7 +123,7 @@ classdef DCA_Device < handle
                 "}"];
         end
         
-        function CreateDCAStartPS(obj)
+        function obj = CreateDCAStartPS(obj)
             fid = fopen(".\scripts\dcaStart" + obj.num + ".ps1","wt");
             % cd to mmWaveStudio\PostProc\
             fprintf(fid,'%s\n',"cd " + obj.mmWaveStudioPath + "\PostProc\");
@@ -161,7 +136,7 @@ classdef DCA_Device < handle
             fclose(fid);
         end
         
-        function CreateDCAStopPS(obj)
+        function obj = CreateDCAStopPS(obj)
             fid = fopen(".\scripts\dcaStop" + obj.num + ".ps1","wt");
             % cd to mmWaveStudio\PostProc\
             fprintf(fid,'%s\n',"cd " + obj.mmWaveStudioPath + "\PostProc\");
@@ -170,7 +145,7 @@ classdef DCA_Device < handle
             fclose(fid);
         end
         
-        function Start(obj)
+        function obj = Start(obj)
             if ~obj.isPrepared
                 obj.textArea.Value = "Prepare the DCAs before starting!";
                 return
@@ -189,7 +164,7 @@ classdef DCA_Device < handle
             pause(0.1)
         end
         
-        function Stop(obj)
+        function obj = Stop(obj)
             !powershell Set-ExecutionPolicy -Scope CurrentUser Bypass
             pause(0.05)
             if obj.num == 1

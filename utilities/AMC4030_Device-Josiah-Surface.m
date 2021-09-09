@@ -1,9 +1,12 @@
 classdef AMC4030_Device < handle
     properties
-        isApp = false           % Boolean whether or not to use the GUI functionality
         isConnected = false     % Boolean whether or not the AMC4030 device is connected
         isConfigured = false    % Boolean whether or not the AMC4030 device is configured
-        COMPortNum              % COM port number of the AMC4030
+        COMPort                 % COM port number of the AMC4030
+        
+        connectionLamp          % Lamp in the GUI for the AMC4030 connection
+        configurationLamp       % Lamp in the GUI for the AMC4030 configuration
+        textArea                % Text area in the GUI for showing statuses
         
         patience = 10           % Number of attempts for movement in any direction before giving up, default = 10
         
@@ -18,9 +21,6 @@ classdef AMC4030_Device < handle
         hor_speed_home_mms = 20 % Homing speed of horizontal movement in mm/s
         ver_speed_home_mms = 20 % Homing speed of horizontal movement in mm/s
         
-        hor_home_offset_mm = 0  % Horizontal home offset in mm
-        ver_home_offset_mm = 0  % Vertical home offset in mm
-        
         curr_hor_mm = 0         % Current horizontal position
         curr_ver_mm = 0         % Current vertical position
         curr_rot_deg = 0        % Current rotational position
@@ -28,88 +28,31 @@ classdef AMC4030_Device < handle
         hor_max_mm = 500        % Maximum possible horizontal position in mm
         ver_max_mm = 500        % Maximum possible vertical position in mm
         
-        hor_mm_per_rev          % Number of millimeters per revolution in the horizontal direction
-        hor_pulses_per_rev      % Number of pulses per revolution in the horizontal direction
-        ver_mm_per_rev          % Number of millimeters per revolution in the vertical direction
-        ver_pulses_per_rev      % Number of pulses per revolution in the vertical direction
+        mm_per_rev              % Number of millimeters per revolution
+        pulses_per_rev          % Number of pulses per revolution
         
         configString            % String array holding every line of the
         configFilePath          % Path of the config file
-        
-        % GUI related parameters
-        connectionLamp          % Lamp in the GUI for the AMC4030 connection
-        configurationLamp       % Lamp in the GUI for the AMC4030 configuration
-        textArea                % Text area in the GUI for showing statuses
-        app                     % GUI object handle
-        
-        % AMC4030 fields
-        hor_speed_field         % Edit field in the GUI for the horizontal speed in mm/s
-        ver_speed_field         % Edit field in the GUI for the vertical speed in mm/s
-        rot_speed_field         % Edit field in the GUI for the rotational speed in mm/s
-        home_speed_field        % Edit field in the GUI for the homing speed in mm/s of the horizontal and vertical directions
-        home_offset_field       % Edit field in the GUI for the home offset in the horizontal and vertical directions
-        hor_mm_rev_field        % Edit field in the GUI for the mm/rev in the horizontal direction
-        hor_pulses_rev_field    % Edit field in the GUI for the pulses/rev in the horizontal direction
-        ver_mm_rev_field        % Edit field in the GUI for the mm/rev in the vertical direction
-        ver_pulses_rev_field    % Edit field in the GUI for the pulses/rev in the vertical direction
-        rot_mm_rev_field        % Edit field in the GUI for the mm/rev in the rotational direction
-        rot_pulses_rev_field    % Edit field in the GUI for the pulses/rev in the rotational direction
-        curr_hor_field          % Edit field in the GUI for current horizontal position in mm
-        curr_ver_field          % Edit field in the GUI for current vertical position in mm
-        curr_rot_field          % Edit field in the GUI for current rotational position in mm
-        hor_max_field           % Edit field in the GUI for the maximum horizontal position in mm
-        ver_max_field           % Edit field in the GUi for the maximum vertical position in mm
     end
     
     methods
-        function obj = AMC4030_Device()
+        function obj = AMC4030_Device(app)
             % Note:
             % Horizontal    : X-Axis on AMC4030
             % Veritcal      : Y-Axis on AMC4030
             % Rotational    : Z-Axis on AMC4030
             
-            obj.configFilePath = cd + "\include\drg_AMC4030_Config.ini";
-        end
-        
-        function Update(obj)
-            % Update the AMC4030_Device
-            
-            if obj.isApp
-                obj.Get();
-            end
-        end
-        
-        function Get(obj)
-            % Attempts to get the values from the GUI
-            
-            if ~obj.isApp
-                obj.textArea.Value = "ERROR: isApp must be set to true to get the values!";
-                return;
+            if ~isempty(app)
+                obj.textArea = app.MainTextArea;
             end
             
-            obj.hor_speed_mms = obj.hor_speed_field.Value;
-            obj.ver_speed_mms = obj.ver_speed_field.Value;
-            
-            obj.hor_speed_home_mms = obj.home_speed_field.Value;
-            obj.ver_speed_home_mms = obj.home_speed_field.Value;
-            
-            obj.hor_mm_per_rev = obj.hor_mm_rev_field.Value;
-            obj.hor_pulses_per_rev = obj.hor_pulses_rev_field.Value;
-            obj.ver_mm_per_rev = obj.ver_mm_rev_field.Value;
-            obj.ver_pulses_per_rev = obj.ver_pulses_rev_field.Value;
-            
-            obj.hor_max_mm = obj.hor_max_field.Value;
-            obj.ver_max_mm = obj.ver_max_field.Value;
+            obj.configFilePath = cd + "\include\drsAMC4030Config.ini";
         end
         
-        function Configure(obj)
+        function obj = Configure(obj)
             % Configures the AMC4030 motion controller
             
-            obj.Update();
-            
             obj.configurationLamp.Color = "yellow";
-            
-            obj.Update();
             
             if ~obj.isConnected || obj.EnsureConnection() ~= 1
                 obj.textArea.Value = "Error: Connect AMC4030 Motion Controller before trying to configure!";
@@ -129,7 +72,7 @@ classdef AMC4030_Device < handle
             obj.textArea.Value = "Configured AMC4030 succesfully";
         end
         
-        function err = SerialConnect(obj)
+        function err = SerialConnect(obj,app)
             % Connect the AMC4030 over serial
             %
             % Outputs
@@ -141,23 +84,26 @@ classdef AMC4030_Device < handle
                 loadlibrary('AMC4030.dll', @ComInterfaceHeader);
             end
             
-            % Prompt and choose serial port for AMC4030
-            [obj.COMPortNum,~,tf] = serialSelect("Select: ""USB-SERIAL CH340""");
+            % Prompt and choose serial port for SAR scanner
+            serialList = serialportlist;
+            [serialIdx,tf] = listdlg('PromptString',"Select: ""USB-SERIAL CH340""",'SelectionMode','single','ListString',serialList);
             
             if tf
-                serialPortName = "COM" + obj.COMPortNum;
+                serialPortNumber = sscanf(serialList(serialIdx),"COM%d",1);
+                serialPortName = "COM" + serialPortNumber; 
+                obj.COMPort = serialPortNumber;
                 
                 % Establish the communication
                 calllib('AMC4030','COM_API_SetComType',2);
                 for ii = 1:3
-                    err = calllib('AMC4030','COM_API_OpenLink',obj.COMPortNum,115200);
+                    err = calllib('AMC4030','COM_API_OpenLink',obj.COMPort,115200);
                     if libisloaded('AMC4030') && err == 1
                         obj.isConnected = true;
                         obj.connectionLamp.Color = 'green';
                         obj.textArea.Value = "Connected AMC4030 at " + serialPortName;
                         
-                        if obj.isApp
-                            figure(obj.app.UIFigure);
+                        if ~isempty(app)
+                            figure(app.UIFigure);
                         end
                         return;
                     end
@@ -171,14 +117,14 @@ classdef AMC4030_Device < handle
                 % No serial port selected
                 obj.textArea.Value = "Invalid COM port selected or no COM port selected. Verify connection and try again.";
                 
-                if obj.isApp
-                    figure(obj.app.UIFigure);
+                if ~isempty(app)
+                    figure(app.UIFigure);
                 end
                 err = -1;
             end
         end
         
-        function [err,wait_time] = Move_Horizontal(obj,hor_move_mm)
+        function [err,wait_time] = Move_Horizontal(obj,hor_move_mm,hor_field)
             % Outputs
             %   1   :   Successful Movement
             %   0   :   No Movement Required
@@ -212,7 +158,7 @@ classdef AMC4030_Device < handle
                 end
                 
                 obj.curr_hor_mm = obj.curr_hor_mm + hor_move_mm;
-                obj.curr_hor_field.Value = obj.curr_hor_mm;
+                hor_field.Value = obj.curr_hor_mm;
                 err = 1;
                 wait_time = abs(hor_move_mm/obj.hor_speed_mms);
                 return;
@@ -222,7 +168,7 @@ classdef AMC4030_Device < handle
             end
         end
         
-        function [err,wait_time] = Move_Vertical(obj,ver_move_mm)
+        function [err,wait_time] = Move_Vertical(obj,ver_move_mm,ver_field)
             % Outputs
             %   1   :   Successful Movement
             %   0   :   No Movement Required
@@ -256,7 +202,7 @@ classdef AMC4030_Device < handle
                 end
                 
                 obj.curr_ver_mm = obj.curr_ver_mm + ver_move_mm;
-                obj.curr_ver_field.Value = obj.curr_ver_mm;
+                ver_field.Value = obj.curr_ver_mm;
                 err = 1;
                 wait_time = abs(ver_move_mm/obj.ver_speed_mms);
                 return;
@@ -266,7 +212,7 @@ classdef AMC4030_Device < handle
             end
         end
         
-        function [err,wait_time] = Move_Rotational(obj,rot_move_deg)
+        function [err,wait_time] = Move_Rotational(obj,rot_move_deg,rot_field)
             % Outputs
             %   1   :   Successful Movement
             %   0   :   No Movement Required
@@ -290,7 +236,7 @@ classdef AMC4030_Device < handle
                 end
                 
                 obj.curr_rot_deg = obj.curr_rot_deg + rot_move_deg;
-                obj.curr_rot_field.Value = obj.curr_rot_deg;
+                rot_field.Value = obj.curr_rot_deg;
                 err = 1;
                 wait_time = abs(rot_move_deg/obj.rot_speed_degs);
                 return;
@@ -356,7 +302,7 @@ classdef AMC4030_Device < handle
             %   -1  :   AMC4030 is disconnected
             
             calllib('AMC4030','COM_API_SetComType',2);
-            err = calllib('AMC4030','COM_API_OpenLink',obj.COMPortNum,115200);
+            err = calllib('AMC4030','COM_API_OpenLink',obj.COMPort,115200);
             if err ~= 1
                 obj.textArea.Value = "AMC4030 Disconnected!";
                 obj.isConnected = false;
@@ -410,8 +356,10 @@ classdef AMC4030_Device < handle
                 return;
             end
             
-            % Print the config string to the file
-            fprintf(fid,'%s\n',obj.configString);
+            % Print every line of the config string to the file
+            for subString = obj.configString
+                fprintf(fid,'%s\n',subString);
+            end
             
             fclose(fid);
             obj.textArea.Value = "Created AMC4030 configuration file successfully at " + obj.configFilePath;
@@ -442,8 +390,8 @@ classdef AMC4030_Device < handle
                 "nHomePowerOn=0"
                 ""
                 "[XAxisParam]"
-                "nPulseFactorUp=" + obj.hor_pulses_per_rev
-                "nPulseFactorDown=" + obj.hor_mm_per_rev
+                "nPulseFactorUp=" + obj.pulses_per_rev
+                "nPulseFactorDown=" + obj.mm_per_rev
                 "nPulseLogic=0"
                 "fMaxSpeed=333"
                 "fMaxPos=" + obj.hor_max_mm
@@ -455,11 +403,11 @@ classdef AMC4030_Device < handle
                 "fHomeCheckDis=50"
                 "fHomeZeroSpeed=10"
                 "fHomeOrgSpeed=5"
-                "fHomePosOffset=" + obj.hor_home_offset_mm
+                "fHomePosOffset=0"
                 ""
                 "[YAxisParam]"
-                "nPulseFactorUp=" + obj.ver_pulses_per_rev
-                "nPulseFactorDown=" + obj.ver_mm_per_rev
+                "nPulseFactorUp=" + obj.pulses_per_rev
+                "nPulseFactorDown=" + obj.mm_per_rev
                 "nPulseLogic=0"
                 "fMaxSpeed=333"
                 "fMaxPos=" + obj.ver_max_mm
@@ -471,7 +419,7 @@ classdef AMC4030_Device < handle
                 "fHomeCheckDis=50"
                 "fHomeZeroSpeed=10"
                 "fHomeOrgSpeed=5"
-                "fHomePosOffset=" + obj.ver_home_offset_mm
+                "fHomePosOffset=0"
                 ""
                 "[ZAxisParam]"
                 "nPulseFactorUp=25000"
@@ -489,5 +437,8 @@ classdef AMC4030_Device < handle
                 "fHomeOrgSpeed=5"
                 "fHomePosOffset=5"];
         end
+    end
+    
+    methods(Static)
     end
 end

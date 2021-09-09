@@ -1,6 +1,5 @@
 classdef ESP32_Device < handle
     properties
-        isApp = false               % Boolean whether or not to use the GUI functionality
         isConnected = false     % Boolean whether or not the ESP32 is connected
         isConfigured = false    % Boolean whether or not the ESP32 is configured
         COMPortNum              % COM Port number of the ESP32
@@ -17,77 +16,18 @@ classdef ESP32_Device < handle
         numY                    % Number of steps in the y-direction
         radarSelect             % Radar selection (1 = radar 1 only, 2 = radar 2 only, 3 = radar 1 and radar 2)
         
-        % GUI related parameters
         connectionLamp          % Lamp in the GUI for the ESP32 connection
         configurationLamp       % Lamp in the GUI for the ESP32 configuration
         textArea                % Text area in the GUI for showing statuses
-        app                     % GUI object handle
-        
-        % ESP32 fields
-        mm_per_rev_field        % Edit field in the GUI for mm_per_rev
-        pulses_per_rev_field    % Edit field in the GUI for pulses_per_rev
-        xStep_mm_field          % Edit field in the GUI for xStep_mm
-        xOffset_mm_field        % Edit field in the GUI for xOffset_mm
-        DeltaX_mm_field         % Edit field in the GUI for DeltaX_mm
-        numX_field              % Edit field in the GUI for numX
-        numY_field              % Edit field in the GUI for numY
-        
-        % Radar 1 and 2 checkboxes
-        isRadar1_checkbox       % Checkbox in GUI for radar1
-        isRadar2_checkbox       % Checkbox in GUI for radar2
     end
     methods
-        function obj = ESP32_Device()
-        end
-        
-        function Update(obj)
-            % Update the TI_Radar_Device
-            
-            if obj.isApp
-                obj.Get();
+        function obj = ESP32_Device(app)
+            if ~isempty(app)
+                obj.textArea = app.MainTextArea;
             end
         end
         
-        function Get(obj)
-            % Attempts to get the values from the GUI
-            
-            if ~obj.isApp
-                obj.textArea.Value = "ERROR: isApp must be set to true to get the values!";
-                return;
-            end
-            
-            obj.mm_per_rev = obj.mm_per_rev_field.Value;
-            obj.pulses_per_rev = obj.pulses_per_rev_field.Value;
-            obj.xStep_mm = obj.xStep_mm_field.Value;
-            obj.xOffset_mm = obj.xOffset_mm_field.Value;
-            obj.DeltaX_mm = obj.DeltaX_mm_field.Value;
-            obj.numX = obj.numX_field.Value;
-            obj.numY = obj.numY_field.Value;
-            obj.radarSelect = obj.isRadar1_checkbox.Value + 2*obj.isRadar2_checkbox.Value;
-        end
-        
-        function Configure(obj)
-            % Configures the ESP32_Device
-            
-            obj.Update();
-            
-            if ~obj.isConnected
-                obj.textArea.Value = "ERROR: connect synchronzier before trying to configure synchronizer";
-                obj.configurationLamp.Color = "red";
-                obj.isConfigured = false;
-                return;
-            end
-            
-            obj.configurationLamp.Color = "yellow";
-            obj.textArea.Value = "Configuring ESP32";
-            
-            % Add any configuration steps here
-            
-            obj.configurationLamp.Color = "green";
-            obj.isConfigured = true;
-        end
-        
-        function err = SerialConnect(obj)
+        function err = SerialConnect(obj,app)
             % Connect to the ESP32 over serial
             %
             % Outputs
@@ -95,10 +35,13 @@ classdef ESP32_Device < handle
             %   -1  :   Failed to connect over serial
             
             % Prompt and choose serial port for ESP32
-            [obj.COMPortNum,~,tf] = serialSelect('Select ESP32 Port:');
+            serialList = serialportlist;
+            [serialIdx,tf] = listdlg('PromptString','Select ESP32 Port:','SelectionMode','single','ListString',serialList);
             
             if tf
-                serialPortName = "COM" + obj.COMPortNum;
+                serialPortNumber = sscanf(serialList(serialIdx),"COM%d",1);
+                serialPortName = "COM" + serialPortNumber;
+                obj.COMPortNum = serialPortNumber;
                 
                 % Create connection to serial port
                 obj.serialDevice = serialport(serialPortName,obj.baudRate);
@@ -110,8 +53,8 @@ classdef ESP32_Device < handle
                 obj.connectionLamp.Color = 'green';
                 obj.textArea.Value = "Successfully connected ESP32 at COM" + obj.COMPortNum;
                 
-                if obj.isApp
-                    figure(obj.app.UIFigure);
+                if ~isempty(app)
+                    figure(app.UIFigure);
                 end
                 err = 1;
             else
@@ -119,14 +62,14 @@ classdef ESP32_Device < handle
                 obj.textArea.Value = "Invalid COM port selected or no COM port selected. Verify connection and try again.";
                 obj.SerialDisconnect();
                 
-                if obj.isApp
-                    figure(obj.app.UIFigure);
+                if ~isempty(app)
+                    figure(app.UIFigure);
                 end
                 err = -1;
             end
         end
         
-        function SerialDisconnect(obj)
+        function obj = SerialDisconnect(obj)
             % Disconnect from the ESP32 over serial
             
             % Clear the serialport object

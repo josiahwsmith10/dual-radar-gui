@@ -1,15 +1,18 @@
 classdef TI_Radar_Device < handle
     properties (Access = public)
-        num                         % Indicates if the radar is 60 GHz (num==1) or 77 GHz (num==2)
+        num                         % Indicates if the radar is 60 GHz (num=1) or 77 GHz (num=2)
         
         cliCommands                 % Array of strings containing the CLI commands
         
-        isApp = false               % Boolean whether or not to use the GUI functionality
         isConnected = false         % Boolean whether or not the radar is connected over serial
         isConfigured = false        % Boolean whether or not the radar is configured
         isNewConfiguration = true   % Boolean whether or not the the configuration is new or it has already been configured
         COMPort = []                % COM Port serialport object
         COMPortNum = 0              % COM Port number
+        
+        connectionLamp              % Lamp in the GUI for the radar connection
+        configurationLamp           % Lamp in the GUI for the radar configuration
+        textArea                    % Text area in the GUI for showing statuses
         
         f0_GHz = 77                 % Starting frequency in GHz
         K = 124.996                 % Chirp slope in MHz/us
@@ -26,45 +29,32 @@ classdef TI_Radar_Device < handle
         nTx = 2                     % Number of transmit antennas used
         
         triggerSelect = 2          	% 1 for SW trigger, 2 for HW trigger
-        
-        % GUI related parameters
-        connectionLamp              % Lamp in the GUI for the radar connection
-        configurationLamp           % Lamp in the GUI for the radar configuration
-        textArea                    % Text area in the GUI for showing statuses
-        app                         % GUI object handle
-        
-        % Chirp parameter fields
-        f0_GHz_field                % Edit field in GUI for f0_GHz
-        K_field                     % Edit field in GUI for K
-        idleTime_us_field           % Edit field in GUI for idleTime_us
-        txStartTime_us_field        % Edit field in GUI for txStartTime_us
-        adcStartTime_us_field       % Edit field in GUI for adcStarTime_us
-        adcSamples_field            % Edit field in GUI for adcSamples
-        fS_ksps_field               % Edit field in GUI for fS_ksps
-        rampEndTime_us_field        % Edit field in GUI for rampEndTime_us
-        numFrames_field             % Edit field in GUI for numFrames
-        numChirps_field             % Edit field in GUI for numChirps
-        pri_ms_field                % Edit field in GUI for pri_ms
-        HardwareTrigger_checkbox    % Check box in GUI for whether or not to use HW trigger
     end
     
     methods
-        function obj = TI_Radar_Device(num)
+        function obj = TI_Radar_Device(app,num)
             obj.num = num;
+            
+            if ~isempty(app)
+                obj.textArea = app.MainTextArea;
+            end
         end
         
-        function err = SerialConnect(obj)
+        function err = SerialConnect(obj,app)
             % Connect TI radar over serial
             %
             % Outputs
             %   1   :   Successfully connected to serial
             %   -1  :   Failed to connect over serial
             
-            % Prompt and choose serial port for ESP32
-            [obj.COMPortNum,~,tf] = serialSelect("Select: ""XDS110 Class Application/User UART port:""");
+            % Prompt and choose serial port for radar
+            serialList = serialportlist;
+            [serialIdx,tf] = listdlg('PromptString','XDS110 Class Application/User UART port:','SelectionMode','single','ListString',serialList);
             
             if tf
-                serialPortName = "COM" + obj.COMPortNum;
+                serialPortNumber = sscanf(serialList(serialIdx),"COM%d",1);
+                serialPortName = append("COM",num2str(serialPortNumber));
+                obj.COMPortNum = serialPortNumber;
                 try
                     obj.COMPort = serialport(serialPortName,115200);
                     obj.textArea.Value = "Radar " + obj.num + " is connected on " + serialPortName;
@@ -79,22 +69,22 @@ classdef TI_Radar_Device < handle
                     return;
                 end
                 
-                if obj.isApp
-                    figure(obj.app.UIFigure);
+                if ~isempty(app)
+                    figure(app.UIFigure);
                 end
                 err = 1;
             else
                 % No serial port selected
                 obj.textArea.Value = "Invalid COM port selected or no COM port selected. Verify connection and try again.";
                 
-                if obj.isApp
-                    figure(obj.app.UIFigure);
+                if ~isempty(app)
+                    figure(app.UIFigure);
                 end
                 err = -1;
             end
         end
         
-        function SerialDisconnect(obj)
+        function obj = SerialDisconnect(obj)
             if ~obj.isConnected
                 obj.textArea.Value = "Radar is not connected. Cannot disconnect";
                 return;
@@ -107,55 +97,7 @@ classdef TI_Radar_Device < handle
             obj.connectionLamp.Color = 'red';
         end
         
-        function err = Update(obj)
-            % Update the TI_Radar_Device
-            %
-            % Outputs
-            %   1   :   Radar updated successfully
-            %   -1  :   Radar did not update successfully
-            
-            if obj.isApp
-                err = obj.Get();
-            else
-                err = 1;
-            end
-        end
-        
-        function err = Get(obj)
-            % Attempts to get the values from the GUI
-            %
-            % Outputs
-            %   1   :   Radar parameters are valid
-            %   -1  :   Radar parameters are invalid
-            
-            if ~obj.isApp
-                obj.textArea.Value = "ERROR: isApp must be set to true to get the values!";
-                return;
-            end
-                    
-            obj.f0_GHz = obj.f0_GHz_field.Value;
-            obj.K = obj.K_field.Value;
-            obj.idleTime_us = obj.idleTime_us_field.Value;
-            obj.txStartTime_us = obj.txStartTime_us_field.Value;
-            obj.adcStartTime_us = obj.adcStartTime_us_field.Value;
-            obj.adcSamples = obj.adcSamples_field.Value;
-            obj.fS_ksps = obj.fS_ksps_field.Value;
-            obj.rampEndTime_us = obj.rampEndTime_us_field.Value;
-            obj.numFrames = obj.numFrames_field.Value;
-            obj.numChirps = obj.numChirps_field.Value;
-            obj.pri_ms = obj.pri_ms_field.Value;
-            obj.nRx = 4;
-            obj.nTx = 2;
-            obj.triggerSelect = 1 + obj.HardwareTrigger_checkbox.Value;
-            
-            err = obj.CheckRadarParameters();
-        end
-        
-        function Configure(obj)
-            if obj.Update() == -1
-                return;
-            end
-            
+        function obj = Configure(obj)
             if ~obj.isConnected
                 obj.textArea.Value = "Connect radar before configuring";
                 return;
@@ -164,8 +106,8 @@ classdef TI_Radar_Device < handle
             obj.configurationLamp.Color = "yellow";
             obj.textArea.Value = "Configuring Radar " + obj.num;
             
-            obj.CreateCLICommands();
-            if obj.WriteCLICommands() == -1
+            obj = CreateCLICommands(obj);
+            if WriteCLICommands(obj) == -1
                 obj.isConfigured = false;
                 obj.configurationLamp.Color = "red";
                 obj.textArea.Value = "Radar " + obj.num + " could not be configured!";
@@ -178,7 +120,7 @@ classdef TI_Radar_Device < handle
             obj.textArea.Value = "Radar " + obj.num + " configured!";
         end
         
-        function Start(obj)
+        function obj = Start(obj)
             if ~obj.isConnected
                 obj.textArea.Value = "Connect radar before starting";
                 return;
@@ -195,11 +137,11 @@ classdef TI_Radar_Device < handle
                 end
                 obj.textArea.Value = "Radar " + obj.num + " started!";
             catch
-                obj.Stop();
+                obj = Stop(obj);
             end
         end
         
-        function Stop(obj)
+        function obj = Stop(obj)
             % Stops the current radar capture by sending the "sensorStop"
             % command to the COM port
             try
@@ -255,13 +197,13 @@ classdef TI_Radar_Device < handle
                 
                 err = 1;
             catch
-                obj.Stop();
+                obj = Stop(obj);
                 obj.textArea.Value = "Unable to read radar " + obj.num + " configuration file. Check for errors";
                 return;
             end
         end
         
-        function CreateCLICommands(obj)
+        function obj = CreateCLICommands(obj)
             if obj.num == 1
                 % Create CLI command string array for 60 GHz radar IWR6843ISK
                 obj.cliCommands = [
@@ -335,34 +277,6 @@ classdef TI_Radar_Device < handle
                     "cfarFovCfg -1 1 -1 1.00"
                     "calibData 0 0 0"
                     ];
-            end
-        end
-        
-        function err = CheckRadarParameters(obj)
-            % Checks if the chirp parameters will work with the SDK
-            %
-            % Outputs
-            %   1   :   Radar parameters are valid
-            %   -1  :   Radar parameters are invalid
-            
-            if mod(obj.numChirps,4) ~= 0
-                % Reduce to value that is multiple of 4
-                obj.numChirps = obj.numChirps - mod(obj.numChirps,4);
-            end
-
-            % Ensure memory usage is OK
-            if obj.adcSamples * obj.numChirps > 16384
-                obj.textArea.Value = "Out of limits on chirp parameters!";
-                obj.configurationLamp.Color = 'red';
-                obj.isConfigured = false;
-
-                cpN = 16384/ADCSamples;
-                adcN = 16384/NumChirpLoops;
-                obj.textArea.Value = "To resolve reduce to " + floor(cpN) + " chirp loops " + " - Reduce to " + floor(adcN) + " ADC samples";
-                
-                err = -1;
-            else
-                err = 1;
             end
         end
     end
