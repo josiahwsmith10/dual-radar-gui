@@ -134,7 +134,10 @@ classdef ESP32_Device < handle
             obj.COMPortNum = 0;
             
             obj.isConnected = false;
-            obj.connectionLamp.Color = 'red';
+            obj.connectionLamp.Color = "red";
+            
+            obj.isConfigured = false;
+            obj.configurationLamp.Color = "red";
         end
         
         function err = SendStart(obj)

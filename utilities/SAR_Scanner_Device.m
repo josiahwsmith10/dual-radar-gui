@@ -8,6 +8,7 @@ classdef SAR_Scanner_Device < handle
         dca2                    % DCA1000EVM for radar 2 (DCA1000EVM_Device handle)
         
         fileName = "scan0"      % File name to save data to (without extension)
+        savePath = ""           % Folder containing the raw .bin files
         radarSelect = 1         % Radar selection (1 = radar 1 only, 2 = radar 2 only, 3 = radar 1 and radar 2)
         
         xStep_m = 0             % Step size in the x-direction in m
@@ -75,6 +76,9 @@ classdef SAR_Scanner_Device < handle
                 obj.Get();
             end
             
+            
+            obj.Verify();
+            
             if obj.isApp
                 obj.Display();
             end
@@ -95,6 +99,10 @@ classdef SAR_Scanner_Device < handle
             
             obj.numX = obj.numX_field.Value;
             obj.numY = obj.numY_field.Value;
+            
+            r = mod(obj.numY,2);
+            obj.numY = obj.numY + r;
+            obj.numY_field.Value = obj.numY;
             
             obj.xMax_m = obj.xMax_mm_field.Value*1e-3;
             obj.yMax_m = obj.yMax_mm_field.Value*1e-3;
@@ -126,14 +134,24 @@ classdef SAR_Scanner_Device < handle
             
             obj.Update();
             
-            if obj.Verify(obj) == -1
+            if obj.Verify() == -1
                 obj.isConfigured = false;
-                obj.textArea.Value = "Could not configure scan. Cannot verify parameters";
                 return;
             end
             
             obj.isConfigured = true;
             obj.textArea.Value = "Scan configured";
+        end
+        
+        function Load(obj)
+            obj.savePath = cd + "\data\" + obj.fileName;
+            % Read in the data
+            dataReader = Data_Reader(obj);
+            if dataReader.GetScan() == -1
+                return;
+            end
+            % Clean up - saves memory
+            delete(dataReader);
         end
         
         function Start(obj)
@@ -228,11 +246,11 @@ classdef SAR_Scanner_Device < handle
         function SingleCommand(obj,xMove_mm,yMove_mm)
             
             if ~obj.amc.isConnected
-                obj.textArea.Value = "ERROR: Connect motion controller before starting scan!";
+                obj.textArea.Value = "ERROR: Connect motion controller before attempting single movement!";
                 return;
             end
             if ~obj.amc.isConfigured
-                obj.textArea.Value = "ERROR: Configure motion controller before starting scan!";
+                obj.textArea.Value = "ERROR: Configure motion controller before attempting single movement!";
                 return;
             end
             
@@ -253,8 +271,8 @@ classdef SAR_Scanner_Device < handle
             
             pause(max([wait_time_hor,wait_time_ver]));
         end
-        
-        function RectilinearScanOLD(obj)
+            
+        function RectilinearScan(obj)
             % Performs the Rectilinear Scan
             
             if ~obj.amc.isConnected
@@ -305,213 +323,6 @@ classdef SAR_Scanner_Device < handle
                 return;
             end
             
-            if obj.isScanning
-                obj.textArea.Value = "Scan is already in progress. Wait for it to finish before attempting another scan!";
-                return;
-            end
-            
-            if obj.esp.SendStart() ~= 1
-                obj.isScanning = false;
-                return
-            end
-            
-            obj.isScanning = true;
-            obj.textArea.Value = "Starting Rectilinear SAR Scan!";
-            
-            % Save the initial position in x and y
-            initial_x_mm = obj.amc.curr_hor_mm;
-            initial_y_mm = obj.amc.curr_ver_mm;
-            
-            xMove_mm = obj.xMove_m*1e3;
-            
-            if obj.radarSelect == 1 || obj.radarSelect == 3
-                obj.dca1.fileName = obj.fileName + "_" + 1;
-                obj.dca1.Prepare();
-                obj.dca1.Start();
-                obj.radar1.Start();
-            end
-            
-            if obj.radarSelect == 2 || obj.radarSelect == 3
-                obj.dca2.fileName = obj.fileName + "_" + 1;
-                obj.dca2.Prepare();
-                obj.dca2.Start();
-                obj.radar2.Start();
-            end
-            
-            % Start the main loop
-            for indY = 1:obj.numY
-                %                 if obj.radarSelect == 1 || obj.radarSelect == 3
-                %                     obj.dca1.fileName = obj.fileName + "_" + indY;
-                %                     obj.dca1.Prepare();
-                %                     obj.dca1.Start();
-                %                     obj.radar1.Start();
-                %                 end
-                %
-                %                 if obj.radarSelect == 2 || obj.radarSelect == 3
-                %                     obj.dca2.fileName = obj.fileName + "_" + indY;
-                %                     obj.dca2.Prepare();
-                %                     obj.dca2.Start();
-                %                     obj.radar2.Start();
-                %                 end
-                
-                pause(obj.pauseTol_s)
-                
-                obj.textArea.Value = "Iteration #" + indY + "/" + obj.numY;
-                
-                [err,wait_time] = obj.amc.Move_Horizontal(xMove_mm);
-                if err ~= -1
-                    pause(wait_time);
-                else
-                    obj.textArea.Value = "ERROR! Horizontal movement #" + indY + " failed!! Aborting scan";
-                    obj.isScanning = false;
-                    return;
-                end
-                
-                pause(obj.pauseTol_s)
-                
-                
-                if obj.radarSelect == 1 || obj.radarSelect == 3
-                    obj.radar1.Stop();
-                    obj.dca1.Stop();
-                end
-                
-                if obj.radarSelect == 2 || obj.radarSelect == 3
-                    obj.radar2.Stop();
-                    obj.dca2.Stop();
-                end
-                
-                % Different routine for the final scan
-                if indY == obj.numY
-                    obj.xSize_m = abs(obj.xSize_m);
-                    break;
-                end
-                
-                % Check if ESP32 completed the correct number of triggers
-                if obj.esp.CheckHorDone() ~= 1
-                    obj.isScanning = false;
-                    return;
-                end
-                
-                % Do the vertical movement
-                [err,wait_time] = obj.amc.Move_Vertical(obj.yStep_m*1e3);
-                if err ~= -1
-                    pause(wait_time);
-                else
-                    obj.textArea.Value = "ERROR! Vertical movement #" + indY + " failed!! Aborting scan";
-                    obj.isScanning = false;
-                    return;
-                end
-                
-                if obj.radarSelect == 1 || obj.radarSelect == 3
-                    obj.dca1.fileName = obj.fileName + "_" + (indY+1);
-                    obj.dca1.Prepare();
-                    obj.dca1.Start();
-                    obj.radar1.Start();
-                end
-                
-                if obj.radarSelect == 2 || obj.radarSelect == 3
-                    obj.dca2.fileName = obj.fileName + "_" + (indY+1);
-                    obj.dca2.Prepare();
-                    obj.dca2.Start();
-                    obj.radar2.Start();
-                end
-                
-                % Send sarNext command to ESP32 to start next horizontal
-                % movement
-                if obj.esp.SendNext() ~= 1
-                    obj.isScanning = false;
-                    return;
-                end
-                
-                if obj.isTwoDirection
-                    xMove_mm = -xMove_mm;
-                else
-                    % NOT ALLOWED WITH ESP32!
-                    obj.textArea.Value = "MUST USE TWO DIRECTION SCANNING WITH ESP32!";
-                    obj.isScanning = false;
-                    return;
-                end
-            end
-            
-            % Send sarNext command to ESP32 to end
-            if obj.esp.SendNext() ~= 1
-                obj.isScanning = false;
-                return;
-            end
-            
-            % Move back to initial position
-            [err,wait_time_hor] = obj.amc.Move_Horizontal(initial_x_mm - obj.amc.curr_hor_mm);
-            if err == -1
-                obj.textArea.Value = "ERROR! Horizontal movement (returning to initial position) failed!!";
-            end
-            
-            [err,wait_time_ver] = obj.amc.Move_Vertical(initial_y_mm - obj.amc.curr_ver_mm);
-            if err == -1
-                obj.textArea.Value = "ERROR! Vertical movement (returning to initial position) failed!!";
-            end
-            
-            pause(max([wait_time_hor,wait_time_ver]));
-            % Check if ESP32 completed the correct number of triggers
-            if obj.esp.CheckScanDone() ~= 1
-                obj.isScanning = false;
-                return;
-            end
-            
-            obj.isScanning = false;
-            obj.textArea.Value = "Rectilinear Scan Done!";
-        end
-                
-        function RectilinearScan(obj)
-            % Performs the Rectilinear Scan
-            
-            if ~obj.amc.isConnected
-                obj.textArea.Value = "ERROR: Connect motion controller before starting scan!";
-                return;
-            end
-            if ~obj.amc.isConfigured
-                obj.textArea.Value = "ERROR: Configure motion controller before starting scan!";
-                return;
-            end
-            
-            if ~obj.esp.isConnected
-                obj.textArea.Value = "ERROR: Connect synchronizer before starting scan!";
-                return;
-            end
-            
-            if ~obj.esp.isConfigured
-                obj.textArea.Value = "ERROR: Configure synchronizer before starting scan!";
-                return;
-            end
-            
-            if ~obj.isConfigured
-                obj.textArea.Value = "ERROR: Configure scan before starting scan!";
-                return;
-            end
-            
-%             % Check radar 1 connection
-%             if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConnected
-%                 obj.textArea.Value = "ERROR: Connect radar 1 before starting scan!";
-%                 return;
-%             end
-%             
-%             % Check radar 1 configuration
-%             if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConfigured
-%                 obj.textArea.Value = "ERROR: Configure radar 1 before starting scan!";
-%                 return;
-%             end
-%             
-%             % Check radar 2 connection
-%             if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConnected
-%                 obj.textArea.Value = "ERROR: Connect radar 2 before starting scan!";
-%                 return;
-%             end
-%             
-%             % Check radar 2 configuration
-%             if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConfigured
-%                 obj.textArea.Value = "ERROR: Configure radar 2 before starting scan!";
-%                 return;
-%             end
-            
             % Check if scan is already in progress
             if obj.isScanning
                 obj.textArea.Value = "Scan is already in progress. Wait for it to finish before attempting another scan!";
@@ -529,7 +340,10 @@ classdef SAR_Scanner_Device < handle
             obj.textArea.Value = "Starting Rectilinear SAR Scan!";
             
             % Create directory to save files
-            mkdir(cd + "\data\" + obj.fileName);
+            obj.savePath = cd + "\data\" + obj.fileName;
+            if ~exist(obj.savePath,'dir')
+                mkdir(obj.savePath);
+            end
             
             % Save the initial position in x and y
             initial_x_mm = obj.amc.curr_hor_mm;
@@ -541,8 +355,6 @@ classdef SAR_Scanner_Device < handle
             for indLap = 1:ceil(obj.numY/2)
                 % Start radars
                 obj.StartRadars(indLap*2-1);
-                
-                pause(obj.pauseTol_s)
                 
                 % Show iteration number on text area
                 obj.textArea.Value = "Iteration #" + (indLap*2-1) + "/" + obj.numY;
@@ -557,16 +369,11 @@ classdef SAR_Scanner_Device < handle
                     return;
                 end
                 
-                %pause(obj.pauseTol_s);
-                
                 % Check if ESP32 completed the correct number of triggers
                 if obj.esp.CheckUpDone() ~= 1
                     obj.isScanning = false;
                     return;
                 end
-                
-                % Stop the radars
-                obj.StopRadars();
                 
                 pause(obj.pauseTol_s)
                 
@@ -603,16 +410,13 @@ classdef SAR_Scanner_Device < handle
                     return;
                 end
                 
-                %pause(obj.pauseTol_s);
-                
                 % Check if ESP32 completed the correct number of triggers
                 if obj.esp.CheckDownDone() ~= 1
                     obj.isScanning = false;
                     return;
                 end
                 
-                % Stop the radars
-                obj.StopRadars();
+                pause(obj.pauseTol_s)
                 
                 % If we are on the last iteration, exit immediately
                 if indLap == ceil(obj.numY/2)
@@ -661,49 +465,25 @@ classdef SAR_Scanner_Device < handle
         end
         
         function StartRadars(obj,ind)
-%             Lua_String = 'ar1.StopFrame()';
-%             ErrStatus = RtttNetClientAPI.RtttNetClient.SendCommand(Lua_String);
-%             
-            pause(1);
-            RSTD_DLL_Path = 'C:\ti\mmwave_studio_02_01_01_00\mmWaveStudio\Clients\RtttNetClientController\RtttNetClientAPI.dll';
-            ErrStatus = Init_RSTD_Connection(RSTD_DLL_Path);
-            Lua_String = "ar1.CaptureCardConfig_StartRecord("""+strrep(cd + "\data\" + obj.fileName + "\" + obj.fileName + "_" + ind + ".bin","\","\\")+""", 0)";
-            ErrStatus = RtttNetClientAPI.RtttNetClient.SendCommand(Lua_String);
-%             ErrStatus = RtttNetClientAPI.RtttNetClient.SendCommand(Lua_String);
+            pause(1)
             
-%             if obj.radarSelect == 1 || obj.radarSelect == 3
-%                 obj.dca1.folderName = obj.fileName;
-%                 obj.dca1.fileName = obj.fileName + "_" + ind;
-%                 obj.dca1.Prepare();
-%                 obj.dca1.Start();
-%                 if mod(ind-1,4) == 0
-%                     obj.radar1.Start();
-                    Lua_String = 'ar1.StartFrame()';
-                    ErrStatus = RtttNetClientAPI.RtttNetClient.SendCommand(Lua_String);
-%                 end
-%             end
-%             
-%             if obj.radarSelect == 2 || obj.radarSelect == 3
-%                 obj.dca2.folderName = obj.fileName;
-%                 obj.dca2.fileName = obj.fileName + "_" + ind;
-%                 obj.dca2.Prepare();
-%                 obj.dca2.Start();
-%                 if mod(ind-1,4) == 0
-%                     obj.radar2.Start();
-%                 end
-%             end
-%             
-            pause(1);
-        end
-        
-        function StopRadars(obj)
-%             if obj.radarSelect == 1 || obj.radarSelect == 3
-%                 obj.dca1.Stop();
-%             end
-%             
-%             if obj.radarSelect == 2 || obj.radarSelect == 3
-%                 obj.dca2.Stop();
-%             end
+            if obj.radarSelect == 1 || obj.radarSelect == 3
+                obj.dca1.folderName = obj.fileName;
+                obj.dca1.fileName = obj.fileName + "_" + ind;
+                obj.dca1.Prepare(true);
+                obj.dca1.Start();
+                    obj.radar1.Start();
+            end
+
+            if obj.radarSelect == 2 || obj.radarSelect == 3
+                obj.dca2.folderName = obj.fileName;
+                obj.dca2.fileName = obj.fileName + "_" + ind;
+                obj.dca2.Prepare(true);
+                obj.dca2.Start();
+                if mod(ind-1,4) == 0
+                    obj.radar2.Start();
+                end
+            end
         end
     end
 end

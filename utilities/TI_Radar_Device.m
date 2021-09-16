@@ -3,6 +3,7 @@ classdef TI_Radar_Device < handle
         num                         % Indicates if the radar is 60 GHz (num==1) or 77 GHz (num==2)
         
         cliCommands                 % Array of strings containing the CLI commands
+        cfgFilePath                 % Path to the profileN.cfg, where N = obj.num
         
         isApp = false               % Boolean whether or not to use the GUI functionality
         isConnected = false         % Boolean whether or not the radar is connected over serial
@@ -21,9 +22,10 @@ classdef TI_Radar_Device < handle
         rampEndTime_us = 32         % Ramp end time in us
         numFrames = 0               % Number of frames
         numChirps = 4               % Number of chirps per frame
-        pri_ms = 50                 % Pulse repetition interval (frame periodicity)
+        pri_ms = 1                  % Pulse repetition interval (frame periodicity)
         nRx = 4                     % Number of receive antennas used
         nTx = 2                     % Number of transmit antennas used
+        c = 299792458               % Speed of light
         
         triggerSelect = 2          	% 1 for SW trigger, 2 for HW trigger
         
@@ -104,7 +106,10 @@ classdef TI_Radar_Device < handle
             obj.COMPortNum = 0;
             
             obj.isConnected = false;
-            obj.connectionLamp.Color = 'red';
+            obj.connectionLamp.Color = "red";
+            
+            obj.isConfigured = false;
+            obj.configurationLamp.Color = "red";
         end
         
         function err = Update(obj)
@@ -165,6 +170,7 @@ classdef TI_Radar_Device < handle
             obj.textArea.Value = "Configuring Radar " + obj.num;
             
             obj.CreateCLICommands();
+            obj.CreateCFG();
             if obj.WriteCLICommands() == -1
                 obj.isConfigured = false;
                 obj.configurationLamp.Color = "red";
@@ -208,7 +214,7 @@ classdef TI_Radar_Device < handle
             catch
                 obj.textArea.Value = "SERIAL CONNECTION TO RADAR " + obj.num + " LOST!";
                 obj.isConnected = false;
-                obj.connectionLamp.Color = red;
+                obj.connectionLamp.Color = 'red';
                 return;
             end
         end
@@ -271,6 +277,7 @@ classdef TI_Radar_Device < handle
                     "channelCfg 15 5 0"
                     "adcCfg 2 1"
                     "adcbufCfg -1 0 1 1 1"
+                    "lowPower 0 0"
                     %"profileCfg 0 60 7 3 24 0 0 166 1 256 12500 0 0 30"
                     "profileCfg 0 " + obj.f0_GHz + " " + obj.idleTime_us + " " + obj.adcStartTime_us + " " + obj.rampEndTime_us + ...
                     " 0 0 " + obj.K + " " + obj.txStartTime_us + " " + obj.adcSamples + " " + obj.fS_ksps + " 0 0 30"
@@ -278,7 +285,6 @@ classdef TI_Radar_Device < handle
                     "chirpCfg 1 1 0 0 0 0 0 4"
                     %"frameCfg 0 1 1 0 100 1 0"
                     "frameCfg 0 1 " + obj.numChirps + " " + obj.numFrames + " " + obj.pri_ms + " " + obj.triggerSelect + " 0" % the 2 at the end refers the hardware vs software trigger may need to change
-                    "lowPower 0 0"
                     "guiMonitor -1 1 1 1 0 0 1"
                     "cfarCfg -1 0 2 8 4 3 0 15 1"
                     "cfarCfg -1 1 0 4 2 3 1 15 1"
@@ -286,7 +292,7 @@ classdef TI_Radar_Device < handle
                     "clutterRemoval -1 0"
                     "calibDcRangeSig -1 0 -5 8 256"
                     "extendedMaxVelocity -1 0"
-                    "bpmCfg -1 0 0 1"
+                    "bpmCfg -1 0 0 0"
                     "lvdsStreamCfg -1 0 1 0"
                     "compRangeBiasAndRxChanPhase 0.0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0"
                     "measureRangeBiasAndRxChanPhase 0 1.5 0.2"
@@ -338,6 +344,24 @@ classdef TI_Radar_Device < handle
             end
         end
         
+        function CreateCFG(obj)
+            % Makes the .cfg profile configuration file
+            
+            % Set the correct path
+            obj.cfgFilePath = cd + "\scripts\profile" + obj.num + ".cfg";
+            
+            fid = fopen(obj.cfgFilePath,"wt");
+            
+            if fid == -1
+                obj.textArea.Value = "Error opening cfg file at " + obj.cfgFilePath;
+            end
+            
+            % Print the json string
+            fprintf(fid,'%s\n',obj.cliCommands);
+            
+            fclose(fid);
+        end
+        
         function err = CheckRadarParameters(obj)
             % Checks if the chirp parameters will work with the SDK
             %
@@ -364,6 +388,177 @@ classdef TI_Radar_Device < handle
             else
                 err = 1;
             end
+        end
+        
+        function Calibrate(obj)
+            % Do the corner reflector calibration process and save the data
+            
+            if ~obj.isConnected
+                obj.textArea.Value = "Must connect radar " + obj.num + " before attempting to calibrate!";
+                return;
+            end
+            
+            if ~obj.isConfigured
+                obj.textArea.Value = "Must configure radar" + obj.num + " before attempting to calibrate!";
+                return;
+            end
+            
+            % Confirm with the user
+            msg = "Are you sure you would like to calibrate radar " + obj.num + "? " +...
+                "A corner reflector is required and the existing calibration data will be overwritten! " +...
+                "Radar must be moved into position before attempting calibration! " +...
+                "Place lowest Rx element in line with corner reflector (at origin).";
+            title = "Do Corner Reflector Calibration";
+            selection = uiconfirm(obj.app.UIFigure,msg,title,...
+                'Options',{'Yes','No'},...
+                'DefaultOption',2,'CancelOption',2);
+            
+            if selection == "No"
+                obj.textArea.Value = "Canceling radar " + obj.num + " calibration";
+                return;
+            end
+            
+            obj.textArea.Value = "Attempting to calibrate radar " + obj.num;
+            
+            % Store the temporary properties
+            dca = obj.app.("dca" + obj.num);
+            temp.numFrames = obj.numFrames;
+            temp.triggerSelect = obj.triggerSelect;
+            temp.fileName = dca.fileName;
+            temp.folderName = dca.folderName;
+            
+            % Change the folder to store the data
+            dca.fileName = "cal1";
+            dca.folderName = "cal" + obj.num;
+            dca.Prepare();
+            
+            % Change the trigger select
+            obj.triggerSelect = 1;
+            obj.HardwareTrigger_checkbox.Value = 0;
+            
+            % Get the calibration parameters
+            prompt = {'Enter number of frames:','Enter distance from radar to corner reflector (mm):'};
+            dlgtitle = 'Calibration Parameters';
+            dims = [1,35];
+            definput = {'2048','300'};
+            answer = inputdlg(prompt,dlgtitle,dims,definput);
+            
+            if isempty(answer)
+                obj.textArea.Value = "Canceling radar " + obj.num + " calibration";
+                obj.triggerSelect = temp.triggerSelect;
+                obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
+                dca.fileName = temp.fileName;
+                dca.folderName = temp.folderName;
+                figure(obj.app.UIFigure);
+                return;
+            end
+            z0_mm = str2double(answer{2});
+            
+            if z0_mm < 250
+                obj.textArea.Value = "Must calibrate with distance from radar to corner reflector greater than 250mm";
+                obj.textArea.Value = "Canceling radar " + obj.num + " calibration";
+                obj.triggerSelect = temp.triggerSelect;
+                obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
+                dca.fileName = temp.fileName;
+                dca.folderName = temp.folderName;
+                figure(obj.app.UIFigure);
+                return;
+            end
+            
+            obj.numFrames = str2double(answer{1});
+            obj.numFrames_field.Value = obj.numFrames;
+            
+            % Configure the radar
+            obj.Configure();
+            
+            % Start the capture
+            dca.Start();
+            obj.Start();
+            
+            % Wait for data to be collected
+            pause(obj.numFrames * obj.pri_ms*1e-3 + 5)
+            
+            % Stop the capture
+            obj.Stop();
+            dca.Stop();
+            
+            pause(1);
+            
+            % Read in the data
+            d = Data_Reader();
+            d.nRx = 4;
+            d.nTx = 2;
+            d.numChirps = obj.numChirps;
+            d.numX = obj.numFrames;
+            d.numADC = obj.adcSamples;
+            calFilePath = cd + "/data/cal" + obj.num + "/" + dca.fileName + "_Raw_0.bin";
+            if d.VerifyFile(calFilePath) == 1
+                data = d.ReadFile(calFilePath);
+            end
+            
+            % Simulate the scenario
+            if obj.num == 1
+                fmcw.fC = 62e9;
+            else
+                fmcw.fC = 79e9;
+            end
+            fmcw.c = 299792458;
+            fmcw.f0 = obj.f0_GHz*1e9;
+            fmcw.K = obj.K*1e12;
+            fmcw.IdleTime_s = obj.idleTime_us*1e-6;
+            fmcw.TXStartTime_s = obj.txStartTime_us*1e-6;
+            fmcw.ADCStartTime_s = obj.adcStartTime_us*1e-6;
+            fmcw.ADCSamples = obj.adcSamples;
+            fmcw.fS = obj.fS_ksps*1e3;
+            fmcw.RampEndTime_s = obj.rampEndTime_us*1e-6;
+            fmcw.lambda_m = fmcw.c/fmcw.fC;
+            fmcw.k = 2*pi/fmcw.c*(fmcw.f0 + fmcw.ADCStartTime_s*fmcw.K + fmcw.K*(0:fmcw.ADCSamples-1)/fmcw.fS);
+            fmcw.rangeMax_m = fmcw.fS*fmcw.c/(2*fmcw.K);
+            target.xyz_m = [0,0,z0_mm*1e-3];
+            rx.xyz_m = [zeros(4,2),fmcw.lambda_m/4*(0:3)'];
+            tx.xyz_m = [zeros(2,2),fmcw.lambda_m/2*(0:1)'+ fmcw.lambda_m*3/4];
+            Rt = pdist2(tx.xyz_m,target.xyz_m)';
+            Rr = pdist2(rx.xyz_m,target.xyz_m);
+            
+            k = reshape(fmcw.k,1,1,[]);
+            sarData = exp(1j*(Rt+Rr).*k);
+            sarDataFFT = fft(sarData,2048,3);
+            
+            % Get good phase thetaGood
+            [~,indZIdeal] = max(squeeze(mean(sarDataFFT,[1,2])));
+            rangeAxis_m = linspace(0,fmcw.rangeMax_m-fmcw.rangeMax_m/2048,2048).';
+            zIdeal_m = rangeAxis_m(indZIdeal);
+            thetaGood = angle(sarDataFFT(:,:,indZIdeal));
+            
+            % Get zBias_m offset between measured and ideal z
+            data = squeeze(mean(data,[3,4]));
+            dataFFT = fft(data,2048,3);
+            avgDataFFT = squeeze(mean(dataFFT,[1,2]));
+            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > 0.2 & rangeAxis_m < 1));
+            zMeasured_m = rangeAxis_m(indZMeasured);
+            
+            zBias_m = zIdeal_m - zMeasured_m;
+            
+            % Attempt range correction
+            dataFFT = fft(data .* exp(1j*2*k*zBias_m),2048,3);
+            
+            % Get bad phase thetaBad
+            avgDataFFT = squeeze(mean(dataFFT,[1,2]));
+            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > 0.2 & rangeAxis_m < 1));
+            % debug: zMeasured_m = rangeAxis_m(indZMeasured);
+            thetaBad = angle(dataFFT(:,:,indZMeasured));
+            
+            sarDataCal = exp(1j*(thetaGood-thetaBad));
+            
+            save(cd + "/data/cal" + obj.num,"sarDataCal","zBias_m");
+            
+            % Move back the temporary properties
+            obj.numFrames = temp.numFrames;
+            obj.numFrames_field.Value = obj.numFrames;
+            obj.triggerSelect = temp.triggerSelect;
+            obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
+            dca.fileName = temp.fileName;
+            dca.folderName = temp.folderName;
         end
     end
 end

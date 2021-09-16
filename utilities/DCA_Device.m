@@ -18,7 +18,7 @@ classdef DCA_Device < handle
         % GUI related parameters
         prepareLamp             % Lamp in the GUI to indicate if the DCA is prepared
         textArea                % Text area in the GUI for showing statuses
-        app                         % GUI object handle
+        app                     % GUI object handle
         
         % DCA fields
         mmWaveStudioPath        % Path to the mmWave Studio installation
@@ -34,16 +34,24 @@ classdef DCA_Device < handle
             obj.num = num;
         end
         
-        function Update(obj)
+        function Update(obj,isIgnoreFileName)
             % Update the DCA_Device
             
+            if nargin < 2
+                isIgnoreFileName = false;
+            end
+            
             if obj.isApp
-                obj.Get();
+                obj.Get(isIgnoreFileName);
             end
         end
         
-        function Get(obj)
+        function Get(obj,isIgnoreFileName)
             % Attempts to get the values from the GUI
+            
+            if nargin < 2
+                isIgnoreFileName = false;
+            end
             
             if ~obj.isApp
                 obj.textArea.Value = "ERROR: isApp must be set to true to get the values!";
@@ -54,13 +62,19 @@ classdef DCA_Device < handle
             obj.DCA1000IPAddress = obj.DCA1000IPAddress_field.Value;
             obj.configPort = obj.configPort_field.Value;
             obj.dataPort = obj.dataPort_field.Value;
-            obj.fileName = obj.fileName_field.Value;
+            if ~isIgnoreFileName
+                obj.fileName = obj.fileName_field.Value;
+            end
         end
         
-        function Prepare(obj)
+        function Prepare(obj,isIgnoreFileName)
             % Prepare the DCA1000EVM (create cf<num>.json config file)
             
-            obj.Update();
+            if nargin < 2
+                isIgnoreFileName = false;
+            end
+            
+            obj.Update(isIgnoreFileName);
             
             obj.jsonFilePath = obj.mmWaveStudioPath + "\PostProc\cf" + obj.num + ".json";
             
@@ -87,6 +101,9 @@ classdef DCA_Device < handle
         end
         
         function CreateJSONString(obj)
+            if ~exist(cd + "\data\" + obj.folderName,'dir')
+                mkdir(cd + "\data\" + obj.folderName);
+            end
             obj.jsonString = ["{"
                 "  ""DCA1000Config"": {"
                 "    ""dataLoggingMode"": ""raw"","
@@ -94,7 +111,7 @@ classdef DCA_Device < handle
                 "    ""dataCaptureMode"": ""ethernetStream"","
                 "    ""lvdsMode"": 2,"
                 "    ""dataFormatMode"": 3,"
-                "    ""packetDelay_us"": 25,"
+                "    ""packetDelay_us"": 10,"
                 "    ""ethernetConfig"": {"
                 "      ""DCA1000IPAddress"": """ + obj.DCA1000IPAddress + ""","
                 "      ""DCA1000ConfigPort"": " + obj.configPort + ","
@@ -111,7 +128,7 @@ classdef DCA_Device < handle
                 "      ""fileBasePath"": """ + strrep(cd + "\data\" + obj.folderName,"\","\\") + ""","
                 "      ""filePrefix"": """ + obj.fileName + ""","
                 "      ""maxRecFileSize_MB"": 1024,"
-                "      ""sequenceNumberEnable"": 0,"
+                "      ""sequenceNumberEnable"": 1,"
                 "      ""captureStopMode"": ""infinite"","
                 "      ""bytesToCapture"": 4000,"
                 "      ""durationToCapture_ms"": 4000,"
@@ -120,11 +137,11 @@ classdef DCA_Device < handle
                 "    ""dataFormatConfig"": {"
                 "      ""MSBToggle"": 0,"
                 "      ""laneFmtMap"": 0,"
-                "      ""reorderEnable"": 0,"
+                "      ""reorderEnable"": 1,"
                 "      ""dataPortConfig"": ["
                 "        {"
                 "          ""portIdx"": 0,"
-                "          ""dataType"": ""real"""
+                "          ""dataType"": ""complex"""
                 "        },"
                 "        {"
                 "          ""portIdx"": 1,"
@@ -132,11 +149,11 @@ classdef DCA_Device < handle
                 "        },"
                 "        {"
                 "          ""portIdx"": 2,"
-                "          ""dataType"": ""real"""
+                "          ""dataType"": ""complex"""
                 "        },"
                 "        {"
                 "          ""portIdx"": 3,"
-                "          ""dataType"": ""real"""
+                "          ""dataType"": ""complex"""
                 "        },"
                 "        {"
                 "          ""portIdx"": 4,"
@@ -153,9 +170,9 @@ classdef DCA_Device < handle
             % cd to mmWaveStudio\PostProc\
             fprintf(fid,'%s\n',"cd " + obj.mmWaveStudioPath + "\PostProc\");
             % print fpga command
-            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe fpga cf" + obj.num + ".json");
+            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe fpga cf" + obj.num + ".json -q");
             % print record command
-            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe record cf" + obj.num + ".json");
+            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe record cf" + obj.num + ".json -q");
             % print start command
             fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe start_record cf" + obj.num + ".json");
             fclose(fid);

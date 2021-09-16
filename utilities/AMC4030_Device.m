@@ -302,7 +302,9 @@ classdef AMC4030_Device < handle
         
         function err = Move_AMC4030(obj,axisNum,distance_mm,speed_mmps)
             if ~obj.isConnected || obj.EnsureConnection() ~= 1
-                error("AMC4030 Must Be Connected to Move!!")
+                obj.textArea.Value = "AMC4030 Must Be Connected to Move!!";
+                err = -1;
+                return;
             end
             err = calllib('AMC4030','COM_API_Jog',axisNum,distance_mm,speed_mmps);
             % Example call to move 'x' axis to '30 mm' at '20 mm/s'
@@ -311,7 +313,9 @@ classdef AMC4030_Device < handle
         
         function err = Home_AMC4030(obj,isHor,isVer,isRot)
             if ~obj.isConnected || obj.EnsureConnection() ~= 1
-                error("AMC4030 Must Be Connected to Home!!")
+                obj.textArea.Value = "AMC4030 Must Be Connected to Home!!";
+                err = -1;
+                return;
             end
             err = calllib('AMC4030','COM_API_Home',isHor,isVer,isRot);
             % Example call to move 'x' axis home
@@ -332,7 +336,9 @@ classdef AMC4030_Device < handle
         
         function err = Stop_AMC4030(obj,isHor,isVer,isRot)
             if ~obj.isConnected || obj.EnsureConnection() ~= 1
-                error("AMC4030 Must Be Connected to Stop!!")
+                obj.textArea.Value = "AMC4030 Must Be Connected to Stop!!";
+                err = -1;
+                return;
             end
             err = calllib('AMC4030','COM_API_StopAxis',isHor,isVer,isRot);
             % Example call to stop 'x' axis
@@ -341,7 +347,9 @@ classdef AMC4030_Device < handle
         
         function err = Stop_All(obj)
             if ~obj.isConnected || obj.EnsureConnection() ~= 1
-                error("AMC4030 Must Be Connected to Stop!!")
+                obj.textArea.Value = "AMC4030 Must Be Connected to Stop!!";
+                err = -1;
+                return
             end
             err = calllib('AMC4030','COM_API_StopAll');
             % Example call to stop all axes
