@@ -160,7 +160,6 @@ classdef SAR_Scanner_Device < handle
             obj.Configure();
             
             if ~obj.isConfigured
-                obj.textArea.Value = "ERROR: scanner is not configured. Configure prior to starting a scan";
                 return;
             end
             
@@ -173,7 +172,10 @@ classdef SAR_Scanner_Device < handle
                     obj.RectilinearScan();
                 otherwise
                     obj.textArea.Value = "ERROR: method must be one of the supported scan-types";
+                    return;
             end
+            
+            obj.CreateLoadScanScript();
         end
         
         function err = Verify(obj)
@@ -233,6 +235,23 @@ classdef SAR_Scanner_Device < handle
                 err = -1;
                 obj.textArea.Value = "ERROR: array size is too large in y-direction!";
                 return;
+            end
+            
+            % If the period between pulses is less than the radar
+            % periodicity
+            if obj.radarSelect == 1 || obj.radarSelect == 3
+                if obj.radar1.pri_ms > obj.xStep_m*1e3 / (obj.amc.hor_speed_mms*1e-3)
+                    err = -1;
+                    obj.textArea.Value = "ERROR: radar 1 periodicity is too large!";
+                    return;
+                end
+            end
+            if obj.radarSelect == 2 || obj.radarSelect == 3
+                if obj.radar2.pri_ms > obj.xStep_m*1e3 / (obj.amc.hor_speed_mms*1e-3)
+                    err = -1;
+                    obj.textArea.Value = "ERROR: radar 2 periodicity is too large!";
+                    return;
+                end
             end
             
             % Time in minutes for two direction scanning
@@ -299,29 +318,29 @@ classdef SAR_Scanner_Device < handle
                 return;
             end
             
-            % Check radar 1 connection
-            if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConnected
-                obj.textArea.Value = "ERROR: Connect radar 1 before starting scan!";
-                return;
-            end
-            
-            % Check radar 1 configuration
-            if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConfigured
-                obj.textArea.Value = "ERROR: Configure radar 1 before starting scan!";
-                return;
-            end
-            
-            % Check radar 2 connection
-            if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConnected
-                obj.textArea.Value = "ERROR: Connect radar 2 before starting scan!";
-                return;
-            end
-            
-            % Check radar 2 configuration
-            if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConfigured
-                obj.textArea.Value = "ERROR: Configure radar 2 before starting scan!";
-                return;
-            end
+%             % Check radar 1 connection
+%             if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConnected
+%                 obj.textArea.Value = "ERROR: Connect radar 1 before starting scan!";
+%                 return;
+%             end
+%             
+%             % Check radar 1 configuration
+%             if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConfigured
+%                 obj.textArea.Value = "ERROR: Configure radar 1 before starting scan!";
+%                 return;
+%             end
+%             
+%             % Check radar 2 connection
+%             if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConnected
+%                 obj.textArea.Value = "ERROR: Connect radar 2 before starting scan!";
+%                 return;
+%             end
+%             
+%             % Check radar 2 configuration
+%             if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConfigured
+%                 obj.textArea.Value = "ERROR: Configure radar 2 before starting scan!";
+%                 return;
+%             end
             
             % Check if scan is already in progress
             if obj.isScanning
@@ -385,7 +404,7 @@ classdef SAR_Scanner_Device < handle
                     obj.textArea.Value = "ERROR! Vertical movement #" + indY + " failed!! Aborting scan";
                     obj.isScanning = false;
                     return;
-                end
+                end 
                 
                 % Send sarNextUp command to ESP32 to start next horizontal
                 % movement
@@ -472,18 +491,66 @@ classdef SAR_Scanner_Device < handle
                 obj.dca1.fileName = obj.fileName + "_" + ind;
                 obj.dca1.Prepare(true);
                 obj.dca1.Start();
-                    obj.radar1.Start();
+                pause(0.1)
+                obj.radar1.Start();
             end
-
+            
             if obj.radarSelect == 2 || obj.radarSelect == 3
                 obj.dca2.folderName = obj.fileName;
                 obj.dca2.fileName = obj.fileName + "_" + ind;
                 obj.dca2.Prepare(true);
                 obj.dca2.Start();
-                if mod(ind-1,4) == 0
-                    obj.radar2.Start();
-                end
+                pause(0.1)
+                obj.radar2.Start();
             end
+        end
+        
+        function CreateLoadScanScript(obj)
+            % Creates the script .m file to load in the data
+            fid = fopen(cd + "\data\" + obj.fileName + "\load_" + obj.fileName + ".m","wt");
+            
+            if fid == -1
+                obj.textArea.Value = "Error creating load scan script!";
+                fclose(fid);
+                return
+            end
+            
+            % Print the load scan script string
+            fprintf(fid,'%s\n',obj.createLoadScanScriptStr);
+            
+            fclose(fid);
+            
+            obj.savePath = cd + "\data\" + obj.fileName;
+            scanner.numX = obj.numX;
+            scanner.numY = obj.numY;
+            scanner.savePath = obj.savePath;
+            scanner.fileName = obj.fileName;
+            scanner.radar1.adcSamples = obj.radar1.adcSamples;
+            scanner.radar1.nTx = obj.radar1.nTx;
+            scanner.radar1.nRx = obj.radar1.nRx;
+            scanner.radar1.fmcw = obj.radar1.fmcw;
+            scanner.radar2.fmcw = obj.radar2.fmcw;
+            scanner.radar1.ant = obj.radar1.ant;
+            scanner.radar2.ant = obj.radar2.ant;
+            scanner.xStep_m = obj.xStep_m;
+            scanner.yStep_m = obj.yStep_m;
+            scanner.textArea = [];
+            
+            save(cd + "\data\" + obj.fileName + "\" + obj.fileName + "LoadFiles","scanner");
+        end
+        
+        function str = createLoadScanScriptStr(obj)
+            % Creates the script string
+            str = [
+                "%% Load Necessary Files"
+                "load(""" + obj.fileName + "LoadFiles.mat"",""scanner"")"
+                ""
+                "%% Create Data_Reader"
+                "d = Data_Reader(scanner);"
+                ""
+                "%% Load the Scanning Data"
+                "d.GetScan();"
+                ];
         end
     end
 end

@@ -48,6 +48,9 @@ classdef TI_Radar_Device < handle
         numChirps_field             % Edit field in GUI for numChirps
         pri_ms_field                % Edit field in GUI for pri_ms
         HardwareTrigger_checkbox    % Check box in GUI for whether or not to use HW trigger
+        
+        fmcw                        % Struct to hold chirp parameters
+        ant                         % Struct to hold the antenna array properties
     end
     
     methods
@@ -120,10 +123,53 @@ classdef TI_Radar_Device < handle
             %   -1  :   Radar did not update successfully
             
             if obj.isApp
-                err = obj.Get();
-            else
-                err = 1;
+                if obj.Get() == -1
+                    err = -1;
+                    return;
+                end
             end
+            
+            if obj.num == 1
+                obj.fmcw.fC = 62e9;
+            else
+                obj.fmcw.fC = 79e9;
+            end
+            obj.fmcw.c = 299792458;
+            obj.fmcw.f0 = obj.f0_GHz*1e9;
+            obj.fmcw.K = obj.K*1e12;
+            obj.fmcw.IdleTime_s = obj.idleTime_us*1e-6;
+            obj.fmcw.TXStartTime_s = obj.txStartTime_us*1e-6;
+            obj.fmcw.ADCStartTime_s = obj.adcStartTime_us*1e-6;
+            obj.fmcw.ADCSamples = obj.adcSamples;
+            obj.fmcw.fS = obj.fS_ksps*1e3;
+            obj.fmcw.RampEndTime_s = obj.rampEndTime_us*1e-6;
+            obj.fmcw.lambda_m = obj.fmcw.c/obj.fmcw.fC;
+            obj.fmcw.k = 2*pi/obj.fmcw.c*(obj.fmcw.f0 + obj.fmcw.ADCStartTime_s*obj.fmcw.K + obj.fmcw.K*(0:obj.fmcw.ADCSamples-1)/obj.fmcw.fS);
+            obj.fmcw.rangeMax_m = obj.fmcw.fS*obj.fmcw.c/(2*obj.fmcw.K);
+            
+            obj.ant.nTx = 2;
+            obj.ant.nRx = 4;
+            obj.ant.nVx = 8;
+            obj.ant.tx.xy_m = single([zeros(2,1),5e-3 + [1.5;3.5]*obj.fmcw.lambda_m]);
+            obj.ant.rx.xy_m = single([zeros(4,1),(0:0.5:1.5).'*obj.fmcw.lambda_m]);
+            obj.ant.vx.xy_m = [];
+            obj.ant.vx.dxy_m = [];
+            for indTx = 1:obj.ant.nTx
+                obj.ant.vx.xy_m = cat(1,obj.ant.vx.xy_m,(obj.ant.tx.xy_m(indTx,:) + obj.ant.rx.xy_m)/2);
+                obj.ant.vx.dxy_m = cat(1,obj.ant.vx.dxy_m,obj.ant.tx.xy_m(indTx,:) - obj.ant.rx.xy_m);
+            end
+            obj.ant.tx.xyz_m = [obj.ant.tx.xy_m,zeros(obj.ant.nTx,1)];
+            obj.ant.rx.xyz_m = [obj.ant.rx.xy_m,zeros(obj.ant.nRx,1)];
+            obj.ant.tx.xyz_m = repmat(obj.ant.tx.xyz_m,obj.ant.nRx,1);
+            obj.ant.tx.xyz_m = reshape(obj.ant.tx.xyz_m,obj.ant.nTx,obj.ant.nRx,3);
+            obj.ant.tx.xyz_m = permute(obj.ant.tx.xyz_m,[2,1,3]);
+            obj.ant.tx.xyz_m = reshape(obj.ant.tx.xyz_m,obj.ant.nVx,3);
+            obj.ant.rx.xyz_m = repmat(obj.ant.rx.xyz_m,obj.ant.nTx,1);
+            
+            obj.ant.tx.xyz_m = single(reshape(obj.ant.tx.xyz_m,obj.ant.nVx,3));
+            obj.ant.rx.xyz_m = single(reshape(obj.ant.rx.xyz_m,obj.ant.nVx,3));
+            obj.ant.vx.xyz_m = single(reshape([obj.ant.vx.xy_m,zeros(obj.ant.nVx,1)],obj.ant.nVx,3));
+            err = 1;
         end
         
         function err = Get(obj)
@@ -156,13 +202,21 @@ classdef TI_Radar_Device < handle
             err = obj.CheckRadarParameters();
         end
         
-        function Configure(obj)
+        function err = Configure(obj)
+            % Attempts to configure the radar
+            %
+            % Outputs
+            %   1   :   Radar configuration successful
+            %   -1  :   Radar configuration failed
+            
             if obj.Update() == -1
+                err = -1;
                 return;
             end
             
             if ~obj.isConnected
                 obj.textArea.Value = "Connect radar before configuring";
+                err = -1;
                 return;
             end
             
@@ -175,6 +229,7 @@ classdef TI_Radar_Device < handle
                 obj.isConfigured = false;
                 obj.configurationLamp.Color = "red";
                 obj.textArea.Value = "Radar " + obj.num + " could not be configured!";
+                err = -1;
                 return;
             end
             
@@ -182,6 +237,7 @@ classdef TI_Radar_Device < handle
             obj.isNewConfiguration = true;
             obj.configurationLamp.Color = "green";
             obj.textArea.Value = "Radar " + obj.num + " configured!";
+            err = 1;
         end
         
         function Start(obj)
@@ -250,12 +306,12 @@ classdef TI_Radar_Device < handle
                     end
                     done_str = readline(obj.COMPort);
                     prompt_str = read(obj.COMPort,size(char('mmwDemo:/>'),2),"char");
-                    %                     disp(" ")
-                    %                     disp("Input: " + obj.cliCommands(indCLI));
-                    %                     disp("Echo : " + echo_str)
-                    %                     disp("Done: " + done_str)
-                    %                     disp("Prompt: " + prompt_str)
-                    %                     disp(" ");
+%                     disp(" ")
+%                     disp("Input: " + obj.cliCommands(indCLI));
+%                     disp("Echo : " + echo_str)
+%                     disp("Done: " + done_str)
+%                     disp("Prompt: " + prompt_str)
+%                     disp(" ");
                     obj.textArea.Value = echo_str;
                 end
                 
@@ -263,6 +319,7 @@ classdef TI_Radar_Device < handle
             catch
                 obj.Stop();
                 obj.textArea.Value = "Unable to read radar " + obj.num + " configuration file. Check for errors";
+                err = -1;
                 return;
             end
         end
@@ -354,9 +411,11 @@ classdef TI_Radar_Device < handle
             
             if fid == -1
                 obj.textArea.Value = "Error opening cfg file at " + obj.cfgFilePath;
+                fclose(fid);
+                return
             end
             
-            % Print the json string
+            % Print the CLI commands
             fprintf(fid,'%s\n',obj.cliCommands);
             
             fclose(fid);
@@ -398,8 +457,8 @@ classdef TI_Radar_Device < handle
                 return;
             end
             
-            if ~obj.isConfigured
-                obj.textArea.Value = "Must configure radar" + obj.num + " before attempting to calibrate!";
+            if obj.Update() == -1
+                obj.textArea.Value = "Error: cannot update radar for some reason";
                 return;
             end
             
@@ -424,6 +483,7 @@ classdef TI_Radar_Device < handle
             dca = obj.app.("dca" + obj.num);
             temp.numFrames = obj.numFrames;
             temp.triggerSelect = obj.triggerSelect;
+            temp.pri_ms = obj.pri_ms;
             temp.fileName = dca.fileName;
             temp.folderName = dca.folderName;
             
@@ -436,6 +496,10 @@ classdef TI_Radar_Device < handle
             obj.triggerSelect = 1;
             obj.HardwareTrigger_checkbox.Value = 0;
             
+            % Change the PRI
+            obj.pri_ms = 10;
+            obj.pri_ms_field.Value = 10;
+            
             % Get the calibration parameters
             prompt = {'Enter number of frames:','Enter distance from radar to corner reflector (mm):'};
             dlgtitle = 'Calibration Parameters';
@@ -447,6 +511,8 @@ classdef TI_Radar_Device < handle
                 obj.textArea.Value = "Canceling radar " + obj.num + " calibration";
                 obj.triggerSelect = temp.triggerSelect;
                 obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
+                obj.pri_ms = temp.pri_ms;
+                obj.pri_ms_field = obj.pri_ms;
                 dca.fileName = temp.fileName;
                 dca.folderName = temp.folderName;
                 figure(obj.app.UIFigure);
@@ -459,6 +525,8 @@ classdef TI_Radar_Device < handle
                 obj.textArea.Value = "Canceling radar " + obj.num + " calibration";
                 obj.triggerSelect = temp.triggerSelect;
                 obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
+                obj.pri_ms = temp.pri_ms;
+                obj.pri_ms_field = obj.pri_ms;
                 dca.fileName = temp.fileName;
                 dca.folderName = temp.folderName;
                 figure(obj.app.UIFigure);
@@ -469,10 +537,15 @@ classdef TI_Radar_Device < handle
             obj.numFrames_field.Value = obj.numFrames;
             
             % Configure the radar
-            obj.Configure();
+            if obj.Configure() == -1
+                obj.textArea.Value = "ERROR: failed to configure the radar! Cannot calibrate!";
+                return;
+            end
             
             % Start the capture
+            obj.textArea.Value = "Capturing calibration data...";
             dca.Start();
+            pause(1);
             obj.Start();
             
             % Wait for data to be collected
@@ -482,9 +555,12 @@ classdef TI_Radar_Device < handle
             obj.Stop();
             dca.Stop();
             
+            obj.textArea.Value = "Calibration data capture complete!";
+            
             pause(1);
             
             % Read in the data
+            obj.textArea.Value = "Reading in the calibration data from the file";
             d = Data_Reader();
             d.nRx = 4;
             d.nTx = 2;
@@ -495,70 +571,63 @@ classdef TI_Radar_Device < handle
             if d.VerifyFile(calFilePath) == 1
                 data = d.ReadFile(calFilePath);
             end
+            obj.textArea.Value = "Calibration data is valid!";
             
             % Simulate the scenario
-            if obj.num == 1
-                fmcw.fC = 62e9;
-            else
-                fmcw.fC = 79e9;
-            end
-            fmcw.c = 299792458;
-            fmcw.f0 = obj.f0_GHz*1e9;
-            fmcw.K = obj.K*1e12;
-            fmcw.IdleTime_s = obj.idleTime_us*1e-6;
-            fmcw.TXStartTime_s = obj.txStartTime_us*1e-6;
-            fmcw.ADCStartTime_s = obj.adcStartTime_us*1e-6;
-            fmcw.ADCSamples = obj.adcSamples;
-            fmcw.fS = obj.fS_ksps*1e3;
-            fmcw.RampEndTime_s = obj.rampEndTime_us*1e-6;
-            fmcw.lambda_m = fmcw.c/fmcw.fC;
-            fmcw.k = 2*pi/fmcw.c*(fmcw.f0 + fmcw.ADCStartTime_s*fmcw.K + fmcw.K*(0:fmcw.ADCSamples-1)/fmcw.fS);
-            fmcw.rangeMax_m = fmcw.fS*fmcw.c/(2*fmcw.K);
-            target.xyz_m = [0,0,z0_mm*1e-3];
-            rx.xyz_m = [zeros(4,2),fmcw.lambda_m/4*(0:3)'];
-            tx.xyz_m = [zeros(2,2),fmcw.lambda_m/2*(0:1)'+ fmcw.lambda_m*3/4];
-            Rt = pdist2(tx.xyz_m,target.xyz_m)';
-            Rr = pdist2(rx.xyz_m,target.xyz_m);
+            obj.textArea.Value = "Simulating scenario";
+            target.xyz_m = single([0,0,z0_mm*1e-3]);
+            Rt = reshape(pdist2(obj.ant.tx.xyz_m,target.xyz_m),d.nRx,d.nTx);
+            Rr = reshape(pdist2(obj.ant.rx.xyz_m,target.xyz_m),d.nRx,d.nTx);
             
-            k = reshape(fmcw.k,1,1,[]);
+            k = reshape(obj.fmcw.k,1,1,[]);
             sarData = exp(1j*(Rt+Rr).*k);
-            sarDataFFT = fft(sarData,2048,3);
+            sarDataFFT = fft(sarData,2048,3)/2048;
             
             % Get good phase thetaGood
             [~,indZIdeal] = max(squeeze(mean(sarDataFFT,[1,2])));
-            rangeAxis_m = linspace(0,fmcw.rangeMax_m-fmcw.rangeMax_m/2048,2048).';
+            rangeAxis_m = linspace(0,obj.fmcw.rangeMax_m-obj.fmcw.rangeMax_m/2048,2048).';
             zIdeal_m = rangeAxis_m(indZIdeal);
-            thetaGood = angle(sarDataFFT(:,:,indZIdeal));
+            cGood = sarDataFFT(:,:,indZIdeal);
             
             % Get zBias_m offset between measured and ideal z
             data = squeeze(mean(data,[3,4]));
-            dataFFT = fft(data,2048,3);
+            dataFFT = fft(data,2048,3)/2048;
             avgDataFFT = squeeze(mean(dataFFT,[1,2]));
-            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > 0.2 & rangeAxis_m < 1));
+            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > z0_mm*0.75e-3 & rangeAxis_m < z0_mm*1.25e-3));
             zMeasured_m = rangeAxis_m(indZMeasured);
             
             zBias_m = zIdeal_m - zMeasured_m;
             
             % Attempt range correction
-            dataFFT = fft(data .* exp(1j*2*k*zBias_m),2048,3);
+            dataFFT = fft(data .* exp(1j*2*k*zBias_m),2048,3)/2048;
             
             % Get bad phase thetaBad
             avgDataFFT = squeeze(mean(dataFFT,[1,2]));
-            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > 0.2 & rangeAxis_m < 1));
+            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > z0_mm*0.75e-3 & rangeAxis_m < z0_mm*1.25e-3));
             % debug: zMeasured_m = rangeAxis_m(indZMeasured);
-            thetaBad = angle(dataFFT(:,:,indZMeasured));
+            cBad = dataFFT(:,:,indZMeasured);
             
-            sarDataCal = exp(1j*(thetaGood-thetaBad));
+            obj.textArea.Value = "Extracting calibration data";
+            calData = cGood./cBad;
             
-            save(cd + "/data/cal" + obj.num,"sarDataCal","zBias_m");
+            % Create multitstatic-to-monostatic conversion data
+            mult2monoConst = reshape(obj.ant.vx.dxy_m(:,2).^2 / (4*z0_mm*1e-3),d.nRx,d.nTx);
+            
+            save(cd + "/cal/cal" + obj.num,"calData","zBias_m","mult2monoConst");
+            obj.textArea.Value = "Saving calibration data to /cal/cal" + obj.num + ".mat";
             
             % Move back the temporary properties
             obj.numFrames = temp.numFrames;
             obj.numFrames_field.Value = obj.numFrames;
             obj.triggerSelect = temp.triggerSelect;
             obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
+            obj.pri_ms = temp.pri_ms;
+            obj.pri_ms_field.Value = obj.pri_ms;
             dca.fileName = temp.fileName;
             dca.folderName = temp.folderName;
+            
+            obj.configurationLamp.Color = "red";
+            obj.isConfigured = false;
         end
     end
 end

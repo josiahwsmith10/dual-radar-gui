@@ -10,8 +10,10 @@ classdef Data_Reader < handle
         nTx = 2                 % Number of transmit antennas
         nRx = 4                 % Number of receive antennas
         
-        fmcw                    % Struct to hold chirp parameters
-        ant                     % Struct to hold the antenna array properties
+        fmcw1                   % Struct to hold chirp parameters
+        ant1                    % Struct to hold the antenna array properties
+        fmcw2                   % Struct to hold chirp parameters
+        ant2                    % Struct to hold the antenna array properties
         sar                     % Struct to hold the SAR scan properties
         
         savePath = ""           % Folder containing the raw .bin files
@@ -38,33 +40,12 @@ classdef Data_Reader < handle
             obj.nRx = scanner.radar1.nRx;
             
             % Create fmcw property 
-            obj.fmcw.f0 = scanner.radar1.f0_GHz*1e9;
-            obj.fmcw.K = scanner.radar1.K*1e12;
-            obj.fmcw.IdleTime_s = scanner.radar1.idleTime_us*1e-6;
-            obj.fmcw.TXStartTime_s = scanner.radar1.txStartTime_us*1e-6;
-            obj.fmcw.ADCStartTime_s = scanner.radar1.adcStartTime_us*1e-6;
-            obj.fmcw.ADCSamples = scanner.radar1.adcSamples;
-            obj.fmcw.fS = scanner.radar1.fS_ksps*1e3;
-            obj.fmcw.RampEndTime_s = scanner.radar1.rampEndTime_us*1e-6;
-            obj.fmcw.c = 299792458;
-            obj.fmcw.fC = (scanner.radar1.f0_GHz+2)*1e9;
-            obj.fmcw.lambda_m = obj.fmcw.c/obj.fmcw.fC;
-            obj.fmcw.k = 2*pi/obj.fmcw.c*(obj.fmcw.f0 + obj.fmcw.ADCStartTime_s*obj.fmcw.K + obj.fmcw.K*(0:obj.fmcw.ADCSamples-1)/obj.fmcw.fS);
-            obj.fmcw.rangeMax_m = obj.fmcw.fS*obj.fmcw.c/(2*obj.fmcw.K);
-            obj.fmcw.rangeResolution_m = obj.fmcw.c/(2*obj.fmcw.K*obj.fmcw.RampEndTime_s);
+            obj.fmcw1 = scanner.radar1.fmcw;
+            obj.fmcw2 = scanner.radar2.fmcw;
             
             % Create ant property
-            obj.ant.tx.numTx = 2; % Number of transmitter antennas
-            obj.ant.rx.numRx = 4; % Number of receive antennas
-            obj.ant.vx.numVx = 8; % Number of virtual antennas
-            obj.ant.vx.dxy = [0    0.0107
-                0    0.0088
-                0    0.0069
-                0    0.0050
-                0    0.0183
-                0    0.0164
-                0    0.0145
-                0    0.0126]; % To not change for xWR1243/1443/1642
+            obj.ant1 = scanner.radar1.ant;
+            obj.ant2 = scanner.radar2.ant;
             
             % Create sar property
             obj.sar.numX = scanner.numX;
@@ -89,11 +70,19 @@ classdef Data_Reader < handle
                 return
             end
             
-            % Create calibration data
-            if exist('cal1','file')
-                load('cal1','zBias_m','sarDataCal');
-                k = reshape(obj.fmcw.k,1,1,[]);
-                obj.sar.calData = permute(sarDataCal .* exp(1j*2*k*zBias_m),[4,1,2,5,3]);
+            % Create calibration data for radar 1: TODO
+%             if exist('cal1','file')
+%                 load('cal1','zBias_m','sarDataCal');
+%                 k = reshape(obj.fmcw1.k,1,1,[]);
+%                 obj.sar.calData1 = permute(sarDataCal .* exp(1j*2*k*zBias_m),[4,1,2,5,3]);
+%             end
+            
+            % Create calibration data for radar 2
+            if exist('cal2','file')
+                load('cal2','zBias_m','calData','mult2monoData');
+                k = reshape(obj.fmcw2.k,1,1,[]);
+                obj.sar.calData2 = permute(calData .* exp(1j*2*k*zBias_m),[4,1,2,5,3]);
+                obj.sar.mult2monoData2 = permute(exp(-1j*k.*mult2monoData),[4,1,2,5,3]);
             end
             
             % Create sarData array
@@ -105,16 +94,20 @@ classdef Data_Reader < handle
                 filePath = obj.savePath + "\" + obj.scanName + "_" + indFile + "_Raw_0.bin";
                 tempData = obj.ReadFile(filePath);
                 if ~mod(indFile,2)
-                    flip(tempData,4);
+                    tempData = flip(tempData,4);
                 end
                 obj.sar.sarDataRaw(:,:,:,indFile,:) = permute(tempData(:,:,1,:,:),[4,1,2,3,5]);
+                obj.textArea.Value = "Loaded file #" + indFile;
+                drawnow;
             end
             
             obj.textArea.Value = "Scan: " + obj.scanName + " loaded successfully!";
             
-            fmcw = obj.fmcw;
-            ant = obj.ant;
-            sar = obj.sar;
+            fmcw(1) = obj.fmcw1;
+            fmcw(2) = obj.fmcw2;
+            ant(1) = obj.ant1;
+            ant(2) = obj.ant2;
+            sar = obj.sar; %#ok<PROP>
             
             save(cd + "\data\" + obj.scanName,"fmcw","ant","sar");
             
@@ -132,8 +125,6 @@ classdef Data_Reader < handle
             
             adcDataSize = 2*obj.numADC;
             
-            nZ = 0;
-            
             for indFrame = 1:obj.numX
                 for indChirp = 1:obj.numChirps
                     for indTx = 1:obj.nTx
@@ -142,15 +133,11 @@ classdef Data_Reader < handle
                             dataChunk = fread(fid,adcDataSize,'uint16','l');
                             dataChunk = dataChunk - (dataChunk >= 2^15)*2^16;
                             adcOut = dataChunk(2:2:end) + 1j*dataChunk(1:2:end);
-                            
-                            nZ = nZ + numel(find(adcOut==0));
                             data(indRx,indTx,indChirp,indFrame,:) = adcOut;
                         end
                     end
                 end
             end
-            
-            nZ2 = numel(find(data==0));
             
             fclose(fid);
         end
