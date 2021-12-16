@@ -70,19 +70,20 @@ classdef Data_Reader < handle
                 return
             end
             
-            % Create calibration data for radar 1: TODO
-%             if exist('cal1','file')
-%                 load('cal1','zBias_m','sarDataCal');
-%                 k = reshape(obj.fmcw1.k,1,1,[]);
-%                 obj.sar.calData1 = permute(sarDataCal .* exp(1j*2*k*zBias_m),[4,1,2,5,3]);
-%             end
+            % Create calibration data for radar 1
+            if exist('./cal/cal1.mat','file')
+                load('./cal/cal1','zBias_m','calData','mult2monoConst');
+                k = reshape(obj.fmcw1.k,1,1,[]);
+                obj.sar.calData1 = permute(calData .* exp(1j*2*k*zBias_m),[4,1,2,5,3]);
+                obj.sar.mult2monoData1 = permute(exp(-1j*k.*mult2monoConst),[4,1,2,5,3]);
+            end
             
             % Create calibration data for radar 2
-            if exist('cal2','file')
-                load('cal2','zBias_m','calData','mult2monoData');
+            if exist('./cal/cal2.mat','file')
+                load('./cal/cal2','zBias_m','calData','mult2monoConst');
                 k = reshape(obj.fmcw2.k,1,1,[]);
                 obj.sar.calData2 = permute(calData .* exp(1j*2*k*zBias_m),[4,1,2,5,3]);
-                obj.sar.mult2monoData2 = permute(exp(-1j*k.*mult2monoData),[4,1,2,5,3]);
+                obj.sar.mult2monoData2 = permute(exp(-1j*k.*mult2monoConst),[4,1,2,5,3]);
             end
             
             % Create sarData array

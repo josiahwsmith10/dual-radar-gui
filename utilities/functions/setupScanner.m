@@ -29,6 +29,7 @@ app.scanner.xMax_mm_field = app.XMaxSizemmEditField;
 app.scanner.yMax_mm_field = app.YMaxSizemmEditField;
 app.scanner.DeltaX_mm_field = app.DeltaXmmEditField;
 app.scanner.xOffset_mm_field = app.XOffsetmmEditField;
+app.scanner.pri_ms_field = app.ScannerPeriodicitymsEditField;
 
 app.scanner.xSize_mm_field = app.XScanSizemmEditField;
 app.scanner.ySize_mm_field = app.YScanSizemmEditField;

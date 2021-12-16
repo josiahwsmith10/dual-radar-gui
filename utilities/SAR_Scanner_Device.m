@@ -14,6 +14,7 @@ classdef SAR_Scanner_Device < handle
         xStep_m = 0             % Step size in the x-direction in m
         yStep_m = 0             % Step size in the y-direction in m
         tStep_deg = 0           % Step size in the rotation-direction in deg
+        pri_ms = 0              % Time between triggers in ms at maximum speed of the scan
         
         numX = 0                % Number of x steps
         numY = 0                % Number of y steps
@@ -54,6 +55,7 @@ classdef SAR_Scanner_Device < handle
         yMax_mm_field           % Edit field in the GUI for yMax in mm
         DeltaX_mm_field         % Edit field in the GUI for DeltaX in mm
         xOffset_mm_field        % Edit field in the GUI for xOffset in mm
+        pri_ms_field            % Edit field in the GUI for the PRI in ms
         
         % SAR scanner fields for display
         xSize_mm_field          % Edit field in the GUI for xSize in mm
@@ -75,7 +77,6 @@ classdef SAR_Scanner_Device < handle
             if obj.isApp
                 obj.Get();
             end
-            
             
             obj.Verify();
             
@@ -110,6 +111,8 @@ classdef SAR_Scanner_Device < handle
             obj.DeltaX_m = obj.DeltaX_mm_field.Value*1e-3;
             obj.xOffset_m = obj.xOffset_mm_field.Value*1e-3;
             
+            obj.pri_ms = obj.pri_ms_field.Value*1e-3;
+            
             obj.radarSelect = obj.isRadar1_checkbox.Value + 2*obj.isRadar2_checkbox.Value;
         end
         
@@ -124,6 +127,7 @@ classdef SAR_Scanner_Device < handle
             obj.xSize_mm_field.Value = obj.xSize_m*1e3;
             obj.ySize_mm_field.Value = obj.ySize_m*1e3;
             obj.scanTime_min_field.Value = obj.scanTime_min;
+            obj.pri_ms_field.Value = obj.pri_ms;
         end
         
         function Configure(obj)
@@ -239,15 +243,16 @@ classdef SAR_Scanner_Device < handle
             
             % If the period between pulses is less than the radar
             % periodicity
+            obj.pri_ms = obj.xStep_m*1e3/(obj.amc.hor_speed_mms*1e-3);
             if obj.radarSelect == 1 || obj.radarSelect == 3
-                if obj.radar1.pri_ms > obj.xStep_m*1e3 / (obj.amc.hor_speed_mms*1e-3)
+                if obj.radar1.pri_ms > obj.pri_ms
                     err = -1;
                     obj.textArea.Value = "ERROR: radar 1 periodicity is too large!";
                     return;
                 end
             end
             if obj.radarSelect == 2 || obj.radarSelect == 3
-                if obj.radar2.pri_ms > obj.xStep_m*1e3 / (obj.amc.hor_speed_mms*1e-3)
+                if obj.radar2.pri_ms > obj.pri_ms
                     err = -1;
                     obj.textArea.Value = "ERROR: radar 2 periodicity is too large!";
                     return;
