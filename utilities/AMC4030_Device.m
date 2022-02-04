@@ -32,6 +32,8 @@ classdef AMC4030_Device < handle
         hor_pulses_per_rev      % Number of pulses per revolution in the horizontal direction
         ver_mm_per_rev          % Number of millimeters per revolution in the vertical direction
         ver_pulses_per_rev      % Number of pulses per revolution in the vertical direction
+        rot_mm_per_rev          % Number of millimeters per revolution in the rotational direction
+        rot_pulses_per_rev      % Number of pulses per revolution in the rotational direction
         
         configString            % String array holding every line of the
         configFilePath          % Path of the config file
@@ -43,22 +45,24 @@ classdef AMC4030_Device < handle
         app                     % GUI object handle
         
         % AMC4030 fields
-        hor_speed_field         % Edit field in the GUI for the horizontal speed in mm/s
-        ver_speed_field         % Edit field in the GUI for the vertical speed in mm/s
-        rot_speed_field         % Edit field in the GUI for the rotational speed in mm/s
-        home_speed_field        % Edit field in the GUI for the homing speed in mm/s of the horizontal and vertical directions
-        home_offset_field       % Edit field in the GUI for the home offset in the horizontal and vertical directions
-        hor_mm_rev_field        % Edit field in the GUI for the mm/rev in the horizontal direction
-        hor_pulses_rev_field    % Edit field in the GUI for the pulses/rev in the horizontal direction
-        ver_mm_rev_field        % Edit field in the GUI for the mm/rev in the vertical direction
-        ver_pulses_rev_field    % Edit field in the GUI for the pulses/rev in the vertical direction
-        rot_mm_rev_field        % Edit field in the GUI for the mm/rev in the rotational direction
-        rot_pulses_rev_field    % Edit field in the GUI for the pulses/rev in the rotational direction
-        curr_hor_field          % Edit field in the GUI for current horizontal position in mm
-        curr_ver_field          % Edit field in the GUI for current vertical position in mm
-        curr_rot_field          % Edit field in the GUI for current rotational position in mm
-        hor_max_field           % Edit field in the GUI for the maximum horizontal position in mm
-        ver_max_field           % Edit field in the GUi for the maximum vertical position in mm
+        hor_speed_field = struct("Value",[])         % Edit field in the GUI for the horizontal speed in mm/s
+        ver_speed_field = struct("Value",[])         % Edit field in the GUI for the vertical speed in mm/s
+        rot_speed_field = struct("Value",[])         % Edit field in the GUI for the rotational speed in mm/s
+        hor_home_speed_field = struct("Value",[])    % Edit field in the GUI for the homing speed in mm/s of the horizontal direction
+        hor_home_offset_field = struct("Value",[])   % Edit field in the GUI for the home offset in the horizontal direction
+        ver_home_speed_field = struct("Value",[])    % Edit field in the GUI for the homing speed in mm/s of the vertical direction
+        ver_home_offset_field = struct("Value",[])   % Edit field in the GUI for the home offset in the vertical direction
+        hor_mm_rev_field = struct("Value",[])        % Edit field in the GUI for the mm/rev in the horizontal direction
+        hor_pulses_rev_field = struct("Value",[])    % Edit field in the GUI for the pulses/rev in the horizontal direction
+        ver_mm_rev_field = struct("Value",[])        % Edit field in the GUI for the mm/rev in the vertical direction
+        ver_pulses_rev_field = struct("Value",[])    % Edit field in the GUI for the pulses/rev in the vertical direction
+        rot_mm_rev_field = struct("Value",[])        % Edit field in the GUI for the mm/rev in the rotational direction
+        rot_pulses_rev_field = struct("Value",[])    % Edit field in the GUI for the pulses/rev in the rotational direction
+        curr_hor_field = struct("Value",[])          % Edit field in the GUI for current horizontal position in mm
+        curr_ver_field = struct("Value",[])          % Edit field in the GUI for current vertical position in mm
+        curr_rot_field = struct("Value",[])          % Edit field in the GUI for current rotational position in mm
+        hor_max_field = struct("Value",[])           % Edit field in the GUI for the maximum horizontal position in mm
+        ver_max_field = struct("Value",[])           % Edit field in the GUi for the maximum vertical position in mm
     end
     
     methods
@@ -87,19 +91,29 @@ classdef AMC4030_Device < handle
                 return;
             end
             
+            % Horizontal (Axis 0)
             obj.hor_speed_mms = obj.hor_speed_field.Value;
-            obj.ver_speed_mms = obj.ver_speed_field.Value;
-            
-            obj.hor_speed_home_mms = obj.home_speed_field.Value;
-            obj.ver_speed_home_mms = obj.home_speed_field.Value;
+            obj.hor_speed_home_mms = obj.hor_home_speed_field.Value;
+            obj.hor_home_offset_mm = obj.hor_home_offset_field.Value;
+            obj.hor_max_mm = obj.hor_max_field.Value;
             
             obj.hor_mm_per_rev = obj.hor_mm_rev_field.Value;
             obj.hor_pulses_per_rev = obj.hor_pulses_rev_field.Value;
+            
+            % Vertical (Axis 1)
+            obj.ver_speed_mms = obj.ver_speed_field.Value;
+            obj.ver_speed_home_mms = obj.ver_home_speed_field.Value;
+            obj.ver_home_offset_mm = obj.ver_home_offset_field.Value;
+            obj.ver_max_mm = obj.ver_max_field.Value;
+            
             obj.ver_mm_per_rev = obj.ver_mm_rev_field.Value;
             obj.ver_pulses_per_rev = obj.ver_pulses_rev_field.Value;
             
-            obj.hor_max_mm = obj.hor_max_field.Value;
-            obj.ver_max_mm = obj.ver_max_field.Value;
+            % Rotational (Axis 2)
+            obj.rot_speed_degs = obj.rot_speed_field.Value;
+            
+            obj.rot_mm_per_rev = obj.rot_mm_rev_field.Value;
+            obj.rot_pulses_per_rev = obj.rot_pulses_rev_field.Value;
         end
         
         function Configure(obj)
@@ -108,6 +122,8 @@ classdef AMC4030_Device < handle
             obj.Update();
             
             obj.configurationLamp.Color = "yellow";
+            obj.textArea.Value = "";
+            pause(0.1)
             
             obj.Update();
             
@@ -121,6 +137,7 @@ classdef AMC4030_Device < handle
             if obj.UploadConfig_AMC4030() == -1
                 obj.isConfigured = false;
                 obj.configurationLamp.Color = "red";
+                obj.textArea.Value = "Failed to configure AMC4030!";
                 return;
             end
             
@@ -175,6 +192,41 @@ classdef AMC4030_Device < handle
                     figure(obj.app.UIFigure);
                 end
                 err = -1;
+            end
+        end
+        
+        function SingleCommand(obj,hor_move_mm,ver_move_mm,rot_move_deg)
+            
+            if ~obj.isConnected
+                obj.textArea.Value = "ERROR: Connect motion controller before attempting single movement!";
+                return;
+            end
+            
+            if ~obj.isConfigured
+                obj.textArea.Value = "ERROR: Configure motion controller before attempting single movement!";
+                return;
+            end
+            
+            obj.textArea.Value = "Sending single command";
+            
+            [err,wait_time_hor] = obj.Move_Horizontal(hor_move_mm);
+            if err == -1
+                obj.textArea.Value = "ERROR! Horizontal movement failed!!";
+            end
+            
+            [err,wait_time_ver] = obj.Move_Vertical(ver_move_mm);
+            if err == -1
+                obj.textArea.Value = "ERROR! Vertical movement failed!!";
+            end
+            
+            [err,wait_time_rot] = obj.Move_Rotational(rot_move_deg);
+            if err == -1
+                obj.textArea.Value = "ERROR! Rotational movement failed!!";
+            end
+            
+            pause(max([wait_time_hor,wait_time_ver,wait_time_rot]));
+            if err ~= -1
+                obj.textArea.Value = "Completed single movement";
             end
         end
         

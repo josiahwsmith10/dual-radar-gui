@@ -74,6 +74,10 @@ classdef DCA_Device < handle
                 isIgnoreFileName = false;
             end
             
+            obj.prepareLamp.Color = 'yellow';
+            obj.textArea.Value = "";
+            pause(0.1)
+            
             obj.Update(isIgnoreFileName);
             
             obj.jsonFilePath = obj.mmWaveStudioPath + "\PostProc\cf" + obj.num + ".json";
@@ -85,6 +89,7 @@ classdef DCA_Device < handle
             obj.CreateDCAStopPS();
             obj.isPrepared = true;
             obj.prepareLamp.Color = 'green';
+            obj.textArea.Value = "Prepared DCA #" + obj.num;
         end
         
         function CreateJSON(obj)
@@ -111,7 +116,7 @@ classdef DCA_Device < handle
                 "    ""dataCaptureMode"": ""ethernetStream"","
                 "    ""lvdsMode"": 2,"
                 "    ""dataFormatMode"": 3,"
-                "    ""packetDelay_us"": 10,"
+                "    ""packetDelay_us"": 25,"
                 "    ""ethernetConfig"": {"
                 "      ""DCA1000IPAddress"": """ + obj.DCA1000IPAddress + ""","
                 "      ""DCA1000ConfigPort"": " + obj.configPort + ","

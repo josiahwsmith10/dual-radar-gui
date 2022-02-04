@@ -273,6 +273,7 @@ classdef SAR_Scanner_Device < handle
                 obj.textArea.Value = "ERROR: Connect motion controller before attempting single movement!";
                 return;
             end
+            
             if ~obj.amc.isConfigured
                 obj.textArea.Value = "ERROR: Configure motion controller before attempting single movement!";
                 return;
@@ -323,29 +324,29 @@ classdef SAR_Scanner_Device < handle
                 return;
             end
             
-%             % Check radar 1 connection
-%             if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConnected
-%                 obj.textArea.Value = "ERROR: Connect radar 1 before starting scan!";
-%                 return;
-%             end
-%             
-%             % Check radar 1 configuration
-%             if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConfigured
-%                 obj.textArea.Value = "ERROR: Configure radar 1 before starting scan!";
-%                 return;
-%             end
-%             
-%             % Check radar 2 connection
-%             if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConnected
-%                 obj.textArea.Value = "ERROR: Connect radar 2 before starting scan!";
-%                 return;
-%             end
-%             
-%             % Check radar 2 configuration
-%             if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConfigured
-%                 obj.textArea.Value = "ERROR: Configure radar 2 before starting scan!";
-%                 return;
-%             end
+            % Check radar 1 connection
+            if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConnected
+                obj.textArea.Value = "ERROR: Connect radar 1 before starting scan!";
+                return;
+            end
+            
+            % Check radar 1 configuration
+            if (obj.radarSelect == 1 || obj.radarSelect == 3) && ~obj.radar1.isConfigured
+                obj.textArea.Value = "ERROR: Configure radar 1 before starting scan!";
+                return;
+            end
+            
+            % Check radar 2 connection
+            if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConnected
+                obj.textArea.Value = "ERROR: Connect radar 2 before starting scan!";
+                return;
+            end
+            
+            % Check radar 2 configuration
+            if (obj.radarSelect == 2 || obj.radarSelect == 3) && ~obj.radar2.isConfigured
+                obj.textArea.Value = "ERROR: Configure radar 2 before starting scan!";
+                return;
+            end
             
             % Check if scan is already in progress
             if obj.isScanning
@@ -491,21 +492,34 @@ classdef SAR_Scanner_Device < handle
         function StartRadars(obj,ind)
             pause(1)
             
-            if obj.radarSelect == 1 || obj.radarSelect == 3
+            if obj.radarSelect == 1
                 obj.dca1.folderName = obj.fileName;
                 obj.dca1.fileName = obj.fileName + "_" + ind;
                 obj.dca1.Prepare(true);
                 obj.dca1.Start();
                 pause(0.1)
                 obj.radar1.Start();
-            end
-            
-            if obj.radarSelect == 2 || obj.radarSelect == 3
+            elseif obj.radarSelect == 2
                 obj.dca2.folderName = obj.fileName;
                 obj.dca2.fileName = obj.fileName + "_" + ind;
                 obj.dca2.Prepare(true);
                 obj.dca2.Start();
                 pause(0.1)
+                obj.radar2.Start();
+            elseif obj.radarSelect == 3
+                obj.dca1.folderName = obj.fileName + "\radar1";
+                obj.dca1.fileName = obj.fileName + "_" + ind;
+                
+                obj.dca2.folderName = obj.fileName + "\radar2";
+                obj.dca2.fileName = obj.fileName + "_" + ind;
+                
+                obj.dca1.Prepare(true);
+                obj.dca2.Prepare(true);
+                
+                obj.dca1.Start();
+                obj.dca2.Start();
+                pause(0.1)
+                obj.radar1.Start();
                 obj.radar2.Start();
             end
         end
