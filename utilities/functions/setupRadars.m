@@ -18,6 +18,7 @@ app.radar1.rampEndTime_us_field = app.RampEndTimeusEditField;
 app.radar1.numFrames_field = app.NoofFramesEditField;
 app.radar1.numChirps_field = app.NoofChirpLoopsEditField;
 app.radar1.pri_ms_field = app.PeriodicitymsEditField;
+app.radar1.serialNumber_field = app.SerialNumberEditField;
 
 app.radar1.HardwareTrigger_checkbox = app.HardwareTriggerCheckBox;
 
@@ -41,6 +42,7 @@ app.radar2.rampEndTime_us_field = app.RampEndTimeusEditField_2;
 app.radar2.numFrames_field = app.NoofFramesEditField_2;
 app.radar2.numChirps_field = app.NoofChirpLoopsEditField_2;
 app.radar2.pri_ms_field = app.PeriodicitymsEditField_2;
+app.radar2.serialNumber_field = app.SerialNumberEditField_2;
 
 app.radar2.HardwareTrigger_checkbox = app.HardwareTriggerCheckBox_2;
 

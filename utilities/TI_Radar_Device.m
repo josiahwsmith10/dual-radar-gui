@@ -28,6 +28,7 @@ classdef TI_Radar_Device < handle
         c = 299792458               % Speed of light
         
         triggerSelect = 2          	% 1 for SW trigger, 2 for HW trigger
+        serialNumber                % Last 4 digits of radar serial number (for calibration)
         
         % GUI related parameters
         connectionLamp              % Lamp in the GUI for the radar connection
@@ -48,6 +49,7 @@ classdef TI_Radar_Device < handle
         numChirps_field             % Edit field in GUI for numChirps
         pri_ms_field                % Edit field in GUI for pri_ms
         HardwareTrigger_checkbox    % Check box in GUI for whether or not to use HW trigger
+        serialNumber_field          % Edit field in GUI for serialNumber
         
         fmcw                        % Struct to hold chirp parameters
         ant                         % Struct to hold the antenna array properties
@@ -198,6 +200,7 @@ classdef TI_Radar_Device < handle
             obj.nRx = 4;
             obj.nTx = 2;
             obj.triggerSelect = 1 + obj.HardwareTrigger_checkbox.Value;
+            obj.serialNumber = obj.serialNumber_field.Value;
             
             err = obj.CheckRadarParameters();
         end
@@ -463,15 +466,27 @@ classdef TI_Radar_Device < handle
             end
             
             % Confirm with the user
-            msg = "Are you sure you would like to calibrate radar " + obj.num + "? " +...
-                "A corner reflector is required and the existing calibration data will be overwritten! " +...
-                "Radar must be moved into position before attempting calibration! " +...
-                "Place lowest Rx element in line with corner reflector (at origin).";
-            title = "Do Corner Reflector Calibration";
+            if exist("cal" + obj.num + "_" + obj.serialNumber + ".mat", "file")
+                % If the radar already has a calibration file
+
+                msg = "Are you sure you would like to calibrate radar " + obj.num + " with serial #" + sprintf("%.4d",obj.serialNumber) + "? " +...
+                    "A corner reflector is required and the existing calibration data will be overwritten! " +...
+                    "Radar must be moved into position before attempting calibration! " +...
+                    "Place lowest Rx element in line with corner reflector (at origin).";
+                title = "Do Corner Reflector RE-Calibration";
+            else
+                % If the radar does not have a calibration file
+
+                msg = "Are you sure you would like to calibrate radar " + obj.num + " with serial #" + sprintf("%.4d",obj.serialNumber) + " for the first time? " +...
+                    "A corner reflector is required! " +...
+                    "Radar must be moved into position before attempting calibration! " +...
+                    "Place lowest Rx element in line with corner reflector (at origin).";
+                title = "Do Corner Reflector Calibration";
+            end
             selection = uiconfirm(obj.app.UIFigure,msg,title,...
                 'Options',{'Yes','No'},...
                 'DefaultOption',2,'CancelOption',2);
-            
+
             if selection == "No"
                 obj.textArea.Value = "Canceling radar " + obj.num + " calibration";
                 return;
@@ -613,8 +628,8 @@ classdef TI_Radar_Device < handle
             % Create multitstatic-to-monostatic conversion data
             mult2monoConst = reshape(obj.ant.vx.dxy_m(:,2).^2 / (4*z0_mm*1e-3),d.nRx,d.nTx);
             
-            save(cd + "/cal/cal" + obj.num,"calData","zBias_m","mult2monoConst");
-            obj.textArea.Value = "Saving calibration data to /cal/cal" + obj.num + ".mat";
+            save(cd + "/cal/cal" + obj.num + "_" + obj.serialNumber,"calData","zBias_m","mult2monoConst");
+            obj.textArea.Value = "Saving calibration data to /cal/cal" + obj.num + "_" + obj.serialNumber + ".mat";
             
             % Move back the temporary properties
             obj.numFrames = temp.numFrames;

@@ -116,7 +116,7 @@ classdef DCA_Device < handle
                 "    ""dataCaptureMode"": ""ethernetStream"","
                 "    ""lvdsMode"": 2,"
                 "    ""dataFormatMode"": 3,"
-                "    ""packetDelay_us"": 25,"
+                "    ""packetDelay_us"": 10,"
                 "    ""ethernetConfig"": {"
                 "      ""DCA1000IPAddress"": """ + obj.DCA1000IPAddress + ""","
                 "      ""DCA1000ConfigPort"": " + obj.configPort + ","

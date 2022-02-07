@@ -540,17 +540,34 @@ classdef SAR_Scanner_Device < handle
             fclose(fid);
             
             obj.savePath = cd + "\data\" + obj.fileName;
-            scanner.numX = obj.numX;
-            scanner.numY = obj.numY;
             scanner.savePath = obj.savePath;
             scanner.fileName = obj.fileName;
+
+            scanner.numX = obj.numX;
+            scanner.numY = obj.numY;
+            scanner.isTwoDirection = obj.isTwoDirection;
+            scanner.radarSelect = obj.radarSelect;
+
             scanner.radar1.adcSamples = obj.radar1.adcSamples;
+            scanner.radar2.adcSamples = obj.radar2.adcSamples;
+
             scanner.radar1.nTx = obj.radar1.nTx;
             scanner.radar1.nRx = obj.radar1.nRx;
+            scanner.radar2.nTx = obj.radar2.nTx;
+            scanner.radar2.nRx = obj.radar2.nRx;
+
             scanner.radar1.fmcw = obj.radar1.fmcw;
             scanner.radar2.fmcw = obj.radar2.fmcw;
+
             scanner.radar1.ant = obj.radar1.ant;
             scanner.radar2.ant = obj.radar2.ant;
+
+            scanner.radar1.num = obj.radar1.num;
+            scanner.radar2.num = obj.radar2.num;
+
+            scanner.radar1.serialNumber = obj.radar1.serialNumber;
+            scanner.radar2.serialNumber = obj.radar2.serialNumber;
+
             scanner.xStep_m = obj.xStep_m;
             scanner.yStep_m = obj.yStep_m;
             scanner.textArea = [];
