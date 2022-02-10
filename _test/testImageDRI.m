@@ -1,20 +1,25 @@
 %% 1. Set File Name
 %-------------------------------------------------------------------------%
-filename = "corner20";
+filename = "psf1";
 load(filename);
 
 load empty2
-% sar.sarDataRaw = sar.sarDataRaw - empty2.sarDataRaw;
+sar.sarDataRaw2 = sar.sarDataRaw2 - empty2.sarDataRaw;
 
 %% GOOD
-sar.sarData = reshape(sar.calData2 .* conj(sar.mult2monoData2) .* sar.sarDataRaw,256,256,64);
+% sar.sarData = reshape(sar.calData2 .* conj(sar.mult2monoData2) .* sar.sarDataRaw,256,256,64);
 % sar.sarData = reshape(sar.sarDataRaw,256,256,64);
 % sar.sarData = reshape(sar.sarDataRaw(:,[1,3,2,4],:,:,:),256,256,64);
 % sar.sarData = reshape(sar.calData2 .* sar.sarDataRaw,256,256,64);
 % sar.sarData = reshape(sar.calData2 .* sar.sarDataRaw(:,[4,3,2,1],:,:,:),256,256,64);
 % sar.sarData = reshape(sar.mult2monoData2 .* sar.sarDataRaw,256,256,64);
 % sar.sarData = reshape(sar.calData2 .* sar.mult2monoData2(:,[4,3,2,1],:,:,:) .* sar.sarDataRaw,256,256,64);
-% sar.sarData = reshape(sar.calData2(:,[4,3,2,1],:,:,:) .* sar.mult2monoData2(:,[4,3,2,1],:,:,:) .* sar.sarDataRaw(:,[4,3,2,1],:,:,:),256,256,64);
+% sar.sarData = reshape(sar.calData2(:,[4,3,2,1],:,:,:) .* sar.mult2monoData2(:,[4,3,2,1],:,:,:) .* sar.sarDataRaw2(:,[4,3,2,1],:,:,:),256,256,64);
+
+% sar.sarData = reshape(sar.calData2 .* conj(sar.mult2monoData2) .* sar.sarDataRaw2,256,256,64);
+sar.sarData = reshape(sar.sarDataRaw2,256,256,64);
+% sar.sarData = reshape(sar.calData2 .* sar.mult2monoData2 .* sar.sarDataRaw2,256,256,64);
+% sar.sarData = reshape(sar.calData1 .* sar.mult2monoData1 .* sar.sarDataRaw1,256,256,64);
 sar.y_step_m = fmcw(2).lambda_m/4;
 
 %% TEMP
@@ -33,18 +38,18 @@ plot(unwrap(angle(s(128,:))))
 %-------------------------------------------------------------------------%
 im.nFFTx = 1024;
 im.nFFTy = 512;
-im.nFFTz = 1024;
+im.nFFTz = 512;
 
 im.numX = 256;
 im.numY = 256;
-im.numZ = 400;
+im.numZ = 200;
 im.x_m = linspace(0.3/im.numX-0.15,0.15,im.numX)';
 im.y_m = linspace(0.3/im.numY-0.15,0.15,im.numY);
-im.z_m = reshape(linspace(0.1+1.9/im.numZ,2,im.numZ),1,1,[]);
+im.z_m = reshape(linspace(0.1+0.4/im.numZ,0.5,im.numZ),1,1,[]);
 
 %% Reconstruct Image
 %-------------------------------------------------------------------------%
-im = uniform_SISO_2D_array_reconstructImage_3D(sar,fmcw(2),im,false); %,sarImage_empty);
+im = uniform_SISO_2D_array_reconstructImage_3D(sar,fmcw(2),im,false);
 
 %% Show the 3-D Image
 im.dBMin = -15;
@@ -52,8 +57,8 @@ plotXYZdB(im.pxyz,im.x_m,im.y_m,im.z_m,[],im.dBMin,"Reconstructed Image " + file
 view(-30,17)
 
 %% Show the 2-D Image
-indZ = 170;
-im.dBMin = -10;
+indZ = 100;
+im.dBMin = -15;
 figure
 plotXYdB(im.pxyz(:,:,indZ),im.x_m,im.y_m,im.dBMin,"x (m)","y (m)","Reconstructed Image at " + im.z_m(indZ)*1e3 + " mm",12)
 

@@ -7,6 +7,7 @@ classdef DCA_Device < handle
         
         systemIPAddress         % System IP address of the DCA board as a string
         DCA1000IPAddress        % DCA1000IP address as a string
+        MACAddress              % MAC address as a string
         configPort              % Configuration port as a string
         dataPort                % Data port as a string
         
@@ -32,6 +33,7 @@ classdef DCA_Device < handle
     methods
         function obj = DCA_Device(num)
             obj.num = num;
+            obj.MACAddress = "12.34.56.78.90.12";
         end
         
         function Update(obj,isIgnoreFileName)
@@ -67,11 +69,15 @@ classdef DCA_Device < handle
             end
         end
         
-        function Prepare(obj,isIgnoreFileName)
+        function Prepare(obj,isIgnoreFileName,isCheckSystemOnline)
             % Prepare the DCA1000EVM (create cf<num>.json config file)
             
             if nargin < 2
                 isIgnoreFileName = false;
+            end
+            
+            if nargin < 3
+                isCheckSystemOnline = false;
             end
             
             obj.prepareLamp.Color = 'yellow';
@@ -87,6 +93,12 @@ classdef DCA_Device < handle
             
             obj.CreateDCAStartPS();
             obj.CreateDCAStopPS();
+            
+            if isCheckSystemOnline
+                obj.CreateCheckSystemOnlinePS();
+                obj.CheckSystemOnline();
+            end
+            
             obj.isPrepared = true;
             obj.prepareLamp.Color = 'green';
             obj.textArea.Value = "Prepared DCA #" + obj.num;
@@ -125,7 +137,7 @@ classdef DCA_Device < handle
                 "    ""ethernetConfigUpdate"": {"
                 "      ""systemIPAddress"": """ + obj.systemIPAddress + ""","
                 "      ""DCA1000IPAddress"": """ + obj.DCA1000IPAddress + ""","
-                "      ""DCA1000MACAddress"": ""12.34.56.78.90.12"","
+                "      ""DCA1000MACAddress"": """ + obj.MACAddress + ""","
                 "      ""DCA1000ConfigPort"": " + obj.configPort + ","
                 "      ""DCA1000DataPort"": " + obj.dataPort + ""
                 "    },"
@@ -168,6 +180,34 @@ classdef DCA_Device < handle
                 "    }"
                 "  }"
                 "}"];
+        end
+        
+        function CreateCheckSystemOnlinePS(obj)
+            % Creates the powershell script to check if the system is
+            % online
+            
+            fid = fopen(".\scripts\dcaCheckSystemOnline" + obj.num + ".ps1","wt");
+            % cd to mmWaveStudio\PostProc\
+            fprintf(fid,'%s\n',"cd " + obj.mmWaveStudioPath + "\PostProc\");
+            % print fpga command
+            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe query_sys_status cf" + obj.num + ".json");
+            fclose(fid);
+        end
+        
+        function CheckSystemOnline(obj)
+            % Checks if the DCA1000EVM is connected and online
+            
+            !powershell Set-ExecutionPolicy -Scope CurrentUser Bypass
+            pause(0.05)
+            if obj.num == 1
+                !powershell -windowstyle hidden -file .\scripts\dcaCheckSystemOnline1.ps1
+            elseif obj.num == 2
+                !powershell -windowstyle hidden -file .\scripts\dcaCheckSystemOnline2.ps1
+            end
+            pause(0.05)
+            !powershell Set-ExecutionPolicy -Scope CurrentUser Default
+            obj.textArea.Value = "Check MATLAB command window to see if system is online";
+            pause(0.1)
         end
         
         function CreateDCAStartPS(obj)

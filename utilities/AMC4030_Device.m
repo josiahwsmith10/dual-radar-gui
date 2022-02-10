@@ -6,6 +6,7 @@ classdef AMC4030_Device < handle
         COMPortNum              % COM port number of the AMC4030
         
         patience = 10           % Number of attempts for movement in any direction before giving up, default = 10
+        wait_tol = 0.001        % Tolerance for extra wait time (extra wait time = wait_tol*speed)
         
         hor_speed_mms = 20      % Speed of horizontal movement in mm/s
         ver_speed_mms = 20      % Speed of vertical movement in mm/s
@@ -266,7 +267,7 @@ classdef AMC4030_Device < handle
                 obj.curr_hor_mm = obj.curr_hor_mm + hor_move_mm;
                 obj.curr_hor_field.Value = obj.curr_hor_mm;
                 err = 1;
-                wait_time = abs(hor_move_mm/obj.hor_speed_mms);
+                wait_time = abs(hor_move_mm/obj.hor_speed_mms) + obj.wait_tol*obj.hor_speed_mms;
                 return;
             else
                 err = 0;
@@ -310,7 +311,7 @@ classdef AMC4030_Device < handle
                 obj.curr_ver_mm = obj.curr_ver_mm + ver_move_mm;
                 obj.curr_ver_field.Value = obj.curr_ver_mm;
                 err = 1;
-                wait_time = abs(ver_move_mm/obj.ver_speed_mms);
+                wait_time = abs(ver_move_mm/obj.ver_speed_mms) + obj.wait_tol*obj.ver_speed_mms;
                 return;
             else
                 err = 0;
@@ -344,7 +345,7 @@ classdef AMC4030_Device < handle
                 obj.curr_rot_deg = obj.curr_rot_deg + rot_move_deg;
                 obj.curr_rot_field.Value = obj.curr_rot_deg;
                 err = 1;
-                wait_time = abs(rot_move_deg/obj.rot_speed_degs);
+                wait_time = abs(rot_move_deg/obj.rot_speed_degs) + obj.wait_tol*obj.rot_speed_degs;
                 return;
             else
                 err = 0;

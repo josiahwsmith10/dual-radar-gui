@@ -1,0 +1,27 @@
+%% Scan Notes
+Name: psfXY_r2_3
+Location: \data\psfXY_r2_3
+
+X-Step Size (mm):	0.9487103
+Y-Step Size (mm):	7.5896825
+
+Num X-Steps:		256
+Num Y-Steps:		32
+
+X-Aperture Size (mm):	241.921129
+Y-Aperture Size (mm):	235.280157
+
+Periodicity (ms):	4.743552
+
+Is radar 1:		0
+Is radar 2:		1
+
+X-Speed (mm/s)		200
+Y-Speed (mm/s)		50
+
+Delta-X (mm)		189.000000
+X-Offset(mm)		0.000000
+
+User Notes:
+PSF at 300 
+mm

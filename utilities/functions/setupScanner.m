@@ -34,6 +34,7 @@ app.scanner.pri_ms_field = app.ScannerPeriodicitymsEditField;
 app.scanner.xSize_mm_field = app.XScanSizemmEditField;
 app.scanner.ySize_mm_field = app.YScanSizemmEditField;
 app.scanner.scanTime_min_field = app.ScanTimeminEditField;
+app.scanner.scanNotes_field = app.ScanNotesEditField;
 
 app.scanner.isRadar1_checkbox = app.Radar1CheckBox;
 app.scanner.isRadar2_checkbox = app.Radar2CheckBox;

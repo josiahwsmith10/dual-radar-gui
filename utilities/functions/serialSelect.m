@@ -8,6 +8,9 @@ Skey = 'HKEY_LOCAL_MACHINE\HARDWARE\DEVICEMAP\SERIALCOMM';
 [~, list] = dos(['REG QUERY ' Skey]);
 if ischar(list) && strcmp('ERROR',list(1:5))
     disp('Error: IDSerialComs - No SERIALCOMM registry entry')
+    COMPortNum = [];
+    COMPortName = [];
+    tf = false;
     return;
 end
 list = strread(list,'%s','delimiter',' '); %#ok<FPARK> requires strread()
@@ -25,6 +28,9 @@ key = 'HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\USB\';
 [~, vals] = dos(['REG QUERY ' key ' /s /f "FriendlyName" /t "REG_SZ"']);
 if ischar(vals) && strcmp('ERROR',vals(1:5))
     disp('Error: IDSerialComs - No Enumerated USB registry entry')
+    COMPortNum = [];
+    COMPortName = [];
+    tf = false;
     return;
 end
 vals = textscan(vals,'%s','delimiter','\t');

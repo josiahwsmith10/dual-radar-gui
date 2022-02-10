@@ -1,5 +1,6 @@
 %% Load Necessary Files
-load("corner21LoadFiles.mat","scanner")
+addpath(genpath("./data/ + obj.fileName"))
+load("testLoadFiles.mat","scanner")
 
 %% Create Data_Reader
 d = Data_Reader(scanner);

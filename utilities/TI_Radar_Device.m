@@ -299,7 +299,7 @@ classdef TI_Radar_Device < handle
                     
                     writeline(obj.COMPort,char(obj.cliCommands(indCLI)));
                     % Very important pause
-                    pause(0.1);
+                    pause(0.05);
                     
                     % For debugging
                     echo_str = readline(obj.COMPort);
@@ -330,37 +330,37 @@ classdef TI_Radar_Device < handle
         function CreateCLICommands(obj)
             if obj.num == 1
                 % Create CLI command string array for 60 GHz radar IWR6843ISK
-                obj.cliCommands = [
+                obj.cliCommands = [                    
                     "sensorStop"
                     "flushCfg"
                     "dfeDataOutputMode 1"
                     "channelCfg 15 5 0"
                     "adcCfg 2 1"
                     "adcbufCfg -1 0 1 1 1"
-                    "lowPower 0 0"
-                    %"profileCfg 0 60 7 3 24 0 0 166 1 256 12500 0 0 30"
+                    % "profileCfg 0 60 425 7 200 0 0 20 1 384 2000 0 0 158"
                     "profileCfg 0 " + obj.f0_GHz + " " + obj.idleTime_us + " " + obj.adcStartTime_us + " " + obj.rampEndTime_us + ...
-                    " 0 0 " + obj.K + " " + obj.txStartTime_us + " " + obj.adcSamples + " " + obj.fS_ksps + " 0 0 30"
+                    " 0 0 " + obj.K + " " + obj.txStartTime_us + " " + obj.adcSamples + " " + obj.fS_ksps + " 0 0 158"
                     "chirpCfg 0 0 0 0 0 0 0 1"
                     "chirpCfg 1 1 0 0 0 0 0 4"
-                    %"frameCfg 0 1 1 0 100 1 0"
+                    % "frameCfg 0 1 16 0 100 1 0"
                     "frameCfg 0 1 " + obj.numChirps + " " + obj.numFrames + " " + obj.pri_ms + " " + obj.triggerSelect + " 0" % the 2 at the end refers the hardware vs software trigger may need to change
-                    "guiMonitor -1 1 1 1 0 0 1"
+                    "lowPower 0 0"
+                    "guiMonitor -1 1 1 0 0 0 1"
                     "cfarCfg -1 0 2 8 4 3 0 15 1"
                     "cfarCfg -1 1 0 4 2 3 1 15 1"
                     "multiObjBeamForming -1 1 0.5"
                     "clutterRemoval -1 0"
                     "calibDcRangeSig -1 0 -5 8 256"
                     "extendedMaxVelocity -1 0"
-                    "bpmCfg -1 0 0 0"
+                    "bpmCfg -1 0 0 1"
                     "lvdsStreamCfg -1 0 1 0"
                     "compRangeBiasAndRxChanPhase 0.0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0"
                     "measureRangeBiasAndRxChanPhase 0 1.5 0.2"
-                    "CQRxSatMonitor 0 3 5 121 0"
-                    "CQSigImgMonitor 0 127 4"
+                    "CQRxSatMonitor 0 3 19 125 0"
+                    "CQSigImgMonitor 0 127 6"
                     "analogMonitor 0 0"
                     "aoaFovCfg -1 -90 90 -90 90"
-                    "cfarFovCfg -1 0 0 8.92"
+                    "cfarFovCfg -1 0 0 12.00"
                     "cfarFovCfg -1 1 -1 1.00"
                     "calibData 0 0 0"
                     ];
@@ -466,14 +466,14 @@ classdef TI_Radar_Device < handle
             end
             
             % Confirm with the user
-            if exist("cal" + obj.num + "_" + obj.serialNumber + ".mat", "file")
+            if exist("cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + ".mat", "file")
                 % If the radar already has a calibration file
 
                 msg = "Are you sure you would like to calibrate radar " + obj.num + " with serial #" + sprintf("%.4d",obj.serialNumber) + "? " +...
                     "A corner reflector is required and the existing calibration data will be overwritten! " +...
                     "Radar must be moved into position before attempting calibration! " +...
                     "Place lowest Rx element in line with corner reflector (at origin).";
-                title = "Do Corner Reflector RE-Calibration";
+                title_uiconfirm = "Do Corner Reflector RE-Calibration";
             else
                 % If the radar does not have a calibration file
 
@@ -481,9 +481,9 @@ classdef TI_Radar_Device < handle
                     "A corner reflector is required! " +...
                     "Radar must be moved into position before attempting calibration! " +...
                     "Place lowest Rx element in line with corner reflector (at origin).";
-                title = "Do Corner Reflector Calibration";
+                title_uiconfirm = "Do Corner Reflector Calibration";
             end
-            selection = uiconfirm(obj.app.UIFigure,msg,title,...
+            selection = uiconfirm(obj.app.UIFigure,msg,title_uiconfirm,...
                 'Options',{'Yes','No'},...
                 'DefaultOption',2,'CancelOption',2);
 
@@ -492,6 +492,20 @@ classdef TI_Radar_Device < handle
                 return;
             end
             
+            % Delete previous calibration files if necessary
+            if exist("./data/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber),"dir")
+                rmdir("./data/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber),"s")
+            end
+            
+            if exist("./cal/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + ".mat","file")
+                delete("./cal/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + ".mat")
+            end
+            
+            if exist("./cal/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + ".fig","file")
+                delete("./cal/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + ".fig")
+            end
+            
+            % Start calibration process!
             obj.textArea.Value = "Attempting to calibrate radar " + obj.num;
             
             % Store the temporary properties
@@ -501,11 +515,6 @@ classdef TI_Radar_Device < handle
             temp.pri_ms = obj.pri_ms;
             temp.fileName = dca.fileName;
             temp.folderName = dca.folderName;
-            
-            % Change the folder to store the data
-            dca.fileName = "cal1";
-            dca.folderName = "cal" + obj.num;
-            dca.Prepare();
             
             % Change the trigger select
             obj.triggerSelect = 1;
@@ -527,7 +536,7 @@ classdef TI_Radar_Device < handle
                 obj.triggerSelect = temp.triggerSelect;
                 obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
                 obj.pri_ms = temp.pri_ms;
-                obj.pri_ms_field = obj.pri_ms;
+                obj.pri_ms_field.Value = obj.pri_ms;
                 dca.fileName = temp.fileName;
                 dca.folderName = temp.folderName;
                 figure(obj.app.UIFigure);
@@ -541,7 +550,7 @@ classdef TI_Radar_Device < handle
                 obj.triggerSelect = temp.triggerSelect;
                 obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
                 obj.pri_ms = temp.pri_ms;
-                obj.pri_ms_field = obj.pri_ms;
+                obj.pri_ms_field.Value = obj.pri_ms;
                 dca.fileName = temp.fileName;
                 dca.folderName = temp.folderName;
                 figure(obj.app.UIFigure);
@@ -554,8 +563,21 @@ classdef TI_Radar_Device < handle
             % Configure the radar
             if obj.Configure() == -1
                 obj.textArea.Value = "ERROR: failed to configure the radar! Cannot calibrate!";
+                obj.triggerSelect = temp.triggerSelect;
+                obj.HardwareTrigger_checkbox.Value = obj.triggerSelect - 1;
+                obj.pri_ms = temp.pri_ms;
+                obj.pri_ms_field.Value= obj.pri_ms;
+                dca.fileName = temp.fileName;
+                dca.folderName = temp.folderName;
                 return;
             end
+            
+            sarDataEmpty = obj.CalibrateEmpty();
+            
+            % Change the folder to store the data
+            dca.fileName = "cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + "_corner";
+            dca.folderName = "cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber);
+            dca.Prepare(true);
             
             % Start the capture
             obj.textArea.Value = "Capturing calibration data...";
@@ -564,11 +586,10 @@ classdef TI_Radar_Device < handle
             obj.Start();
             
             % Wait for data to be collected
-            pause(obj.numFrames * obj.pri_ms*1e-3 + 5)
+            pause(obj.numFrames * obj.pri_ms*1e-3 + 2)
             
             % Stop the capture
             obj.Stop();
-            dca.Stop();
             
             obj.textArea.Value = "Calibration data capture complete!";
             
@@ -582,54 +603,21 @@ classdef TI_Radar_Device < handle
             d.numChirps = obj.numChirps;
             d.numX = obj.numFrames;
             d.numADC = obj.adcSamples;
-            calFilePath = cd + "/data/cal" + obj.num + "/" + dca.fileName + "_Raw_0.bin";
+            calFilePath = cd + "/data/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + "/" + dca.fileName + "_Raw_0.bin";
             if d.VerifyFile(calFilePath) == 1
                 data = d.ReadFile(calFilePath);
             end
             obj.textArea.Value = "Calibration data is valid!";
             
-            % Simulate the scenario
-            obj.textArea.Value = "Simulating scenario";
-            target.xyz_m = single([0,0,z0_mm*1e-3]);
-            Rt = reshape(pdist2(obj.ant.tx.xyz_m,target.xyz_m),d.nRx,d.nTx);
-            Rr = reshape(pdist2(obj.ant.rx.xyz_m,target.xyz_m),d.nRx,d.nTx);
-            
-            k = reshape(obj.fmcw.k,1,1,[]);
-            sarData = exp(1j*(Rt+Rr).*k);
-            sarDataFFT = fft(sarData,2048,3)/2048;
-            
-            % Get good phase thetaGood
-            [~,indZIdeal] = max(squeeze(mean(sarDataFFT,[1,2])));
-            rangeAxis_m = linspace(0,obj.fmcw.rangeMax_m-obj.fmcw.rangeMax_m/2048,2048).';
-            zIdeal_m = rangeAxis_m(indZIdeal);
-            cGood = sarDataFFT(:,:,indZIdeal);
-            
-            % Get zBias_m offset between measured and ideal z
-            data = squeeze(mean(data,[3,4]));
-            dataFFT = fft(data,2048,3)/2048;
-            avgDataFFT = squeeze(mean(dataFFT,[1,2]));
-            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > z0_mm*0.75e-3 & rangeAxis_m < z0_mm*1.25e-3));
-            zMeasured_m = rangeAxis_m(indZMeasured);
-            
-            zBias_m = zIdeal_m - zMeasured_m;
-            
-            % Attempt range correction
-            dataFFT = fft(data .* exp(1j*2*k*zBias_m),2048,3)/2048;
-            
-            % Get bad phase thetaBad
-            avgDataFFT = squeeze(mean(dataFFT,[1,2]));
-            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > z0_mm*0.75e-3 & rangeAxis_m < z0_mm*1.25e-3));
-            % debug: zMeasured_m = rangeAxis_m(indZMeasured);
-            cBad = dataFFT(:,:,indZMeasured);
-            
-            obj.textArea.Value = "Extracting calibration data";
-            calData = cGood./cBad;
+            [calData,zBias_m] = obj.computeCalibration(data,d,z0_mm,sarDataEmpty);
             
             % Create multitstatic-to-monostatic conversion data
             mult2monoConst = reshape(obj.ant.vx.dxy_m(:,2).^2 / (4*z0_mm*1e-3),d.nRx,d.nTx);
+            obj.textArea.Value = "";
             
-            save(cd + "/cal/cal" + obj.num + "_" + obj.serialNumber,"calData","zBias_m","mult2monoConst");
-            obj.textArea.Value = "Saving calibration data to /cal/cal" + obj.num + "_" + obj.serialNumber + ".mat";
+            % Save the calibration data
+            save(cd + "/cal/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber),"calData","zBias_m","mult2monoConst","sarDataEmpty");
+            obj.textArea.Value = "DONE: Saving calibration data to /cal/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + ".mat";
             
             % Move back the temporary properties
             obj.numFrames = temp.numFrames;
@@ -643,6 +631,190 @@ classdef TI_Radar_Device < handle
             
             obj.configurationLamp.Color = "red";
             obj.isConfigured = false;
+        end
+        
+        function [calData,zBias_m] = computeCalibration(obj,data,d,z0_mm,sarDataEmpty)
+            % Computes calData and zBias_m 
+            
+            % Simulate the scenario
+            obj.textArea.Value = "Simulating scenario";
+            target.xyz_m = single([0,0,z0_mm*1e-3]);
+            Rt = reshape(pdist2(obj.ant.tx.xyz_m,target.xyz_m),d.nRx,d.nTx);
+            Rr = reshape(pdist2(obj.ant.rx.xyz_m,target.xyz_m),d.nRx,d.nTx);
+            
+            k = reshape(obj.fmcw.k,1,1,[]);
+            sarData = exp(1j*(Rt+Rr).*k);
+            sarDataFFT = fft(sarData,2048,3)/2048;
+            
+            % Get good amplitude and phase (cGood)
+            avgSarDataFFT = squeeze(mean(sarDataFFT,[1,2]));
+            [~,indZIdeal] = max(avgSarDataFFT);
+            rangeAxis_m = linspace(0,obj.fmcw.rangeMax_m-obj.fmcw.rangeMax_m/2048,2048).';
+            zIdeal_m = rangeAxis_m(indZIdeal);
+            cGood = sarDataFFT(:,:,indZIdeal);
+            
+            % Plot ideal range FFT
+            set(0,'DefaultFigureWindowStyle','docked')
+            f = figure;
+            plot(rangeAxis_m,db(abs(avgSarDataFFT/max(avgSarDataFFT(:)))),"k--")
+            xlim([rangeAxis_m(1),rangeAxis_m(end)])
+            ylim([-40,0])
+            xlabel("Range (m)")
+            ylabel("dB")
+            legend("Ideal")
+            title("Range FFT")
+            hold on
+            
+            pause(0.5)
+            
+            % Plot ideal max
+            plot(zIdeal_m,db(abs(squeeze(mean(cGood,[1,2]))/max(avgSarDataFFT(:)))),'xk',"LineWidth",1.5)
+            legend("Ideal","Ideal Max")
+            
+            pause(0.5)
+            
+            % Get zBias_m offset between measured and ideal z
+            data = squeeze(mean(data,[3,4])) - sarDataEmpty;
+            dataFFT = fft(data,2048,3)/2048;
+            avgDataFFT = squeeze(mean(dataFFT,[1,2]));
+            
+            % Plot raw data range FFT
+            plot(rangeAxis_m,db(abs(avgDataFFT/max(avgDataFFT(:)))),"r--")
+            legend("Ideal","Ideal Max","Raw Data")
+            
+            pause(0.5)
+            obj.textArea.Value = "Please select approximate max of raw data on plot";
+            title("Range FFT: please select approximate max of raw data")
+            drawnow
+            
+            % Get user to select max
+            roi = drawpoint;
+            zSearch_m = roi.Position(1);
+            delete(roi)
+            
+            % Plot search area
+            searchArea = avgDataFFT .* (rangeAxis_m > zSearch_m*0.75 & rangeAxis_m < zSearch_m*1.25);
+            searchArea(searchArea == 0) = nan;
+            plot(rangeAxis_m,db(abs(searchArea/max(avgDataFFT(:)))),"r","LineWidth",1.5)
+            legend("Ideal","Ideal Max","Raw Data","Search Area")
+            title("Range FFT")
+            
+            pause(0.5)
+            
+            % Find raw max
+            [~,indZMeasured] = max(searchArea);
+            zMeasured_m = rangeAxis_m(indZMeasured);
+            cBad = dataFFT(:,:,indZMeasured);
+            
+            % Plot raw max
+            plot(zMeasured_m,db(abs(squeeze(mean(cBad,[1,2]))/max(avgDataFFT(:)))),'ro',"LineWidth",1.5)
+            legend("Ideal","Ideal Max","Raw Data","Search Area","Raw Max")
+            
+            pause(0.5)
+            
+            % Compute bias
+            zBias_m = zIdeal_m - zMeasured_m;
+            
+            % Attempt range correction
+            dataFFT = fft(data .* exp(1j*2*k*zBias_m),2048,3)/2048;
+            
+            % Get bad amplitude and phase (cBad)
+            avgDataFFT = squeeze(mean(dataFFT,[1,2]));
+            [~,indZMeasured] = max(avgDataFFT .* (rangeAxis_m > z0_mm*0.75e-3 & rangeAxis_m < z0_mm*1.25e-3));
+            zMeasured_m = rangeAxis_m(indZMeasured);
+            cBad = dataFFT(:,:,indZMeasured);
+            
+            % Plot corrected range FFT
+            plot(rangeAxis_m,db(abs(avgDataFFT/max(avgDataFFT(:)))),"b","LineWidth",2)
+            plot(zMeasured_m,db(abs(squeeze(mean(cBad,[1,2]))/max(avgDataFFT(:)))),'bo',"LineWidth",1.5,"MarkerSize",10)
+            legend("Ideal","Ideal Max","Raw Data","Search Area","Raw Max","Corrected","Corrected Max")
+            title("Range FFT: Error = " + abs(zIdeal_m - zMeasured_m)*1e3 + " (mm)")
+            
+            calData = cGood./cBad;
+            
+            % Save figure for future reference
+            saveas(f,cd + "/cal/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) )
+        end
+        
+        function sarDataEmpty = CalibrateEmpty(obj)
+            % Calibrate for an empty scene
+            
+            dca = obj.app.("dca" + obj.num);
+            
+            % Ask user if they would like to calibrate empty scene
+            msg = "Would you like to calibrate radar " + obj.num + " with serial #" + sprintf("%.4d",obj.serialNumber) + ...
+                " for an empty scene (improves image quality)? Note: AMC4030 must be connected and configured";
+            title_ui = "Do Empty Scene Calibration";
+            selection = uiconfirm(obj.app.UIFigure,msg,title_ui,...
+                'Options',{'Yes','No'},...
+                'DefaultOption',2,'CancelOption',2);
+
+            if selection == "Yes"
+                % Do empty calibration
+                
+                % Get the calibration parameters
+                prompt = {'Move X (mm):','Move Y (mm):'};
+                dlgtitle = 'Move to Empty Space';
+                dims = [1,35];
+                definput = {'500','0'};
+                answer = inputdlg(prompt,dlgtitle,dims,definput);
+                
+                xMove_mm = str2double(answer{1});
+                yMove_mm = str2double(answer{2});
+                
+                obj.textArea.Value = "Moving to empty scene";
+                obj.app.scanner.SingleCommand(xMove_mm,yMove_mm);
+                
+                pause(1);
+                
+                % Change the folder to store the data
+                dca.fileName = "cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + "_empty";
+                dca.folderName = "cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber);
+                dca.Prepare(true);
+                
+                % Start the capture
+                obj.textArea.Value = "Capturing empty scene calibration data...";
+                dca.Start();
+                pause(1);
+                obj.Start();
+                
+                % Wait for data to be collected
+                pause(obj.numFrames * obj.pri_ms*1e-3 + 2)
+                
+                % Stop the capture
+                obj.Stop();
+                
+                obj.textArea.Value = "Empty scene calibration data capture complete!";
+                
+                pause(1);
+                
+                obj.textArea.Value = "Moving back to original position";
+                obj.app.scanner.SingleCommand(-xMove_mm,-yMove_mm);
+                
+                pause(1);
+                
+                % Read in the data
+                obj.textArea.Value = "Reading in the empty scene calibration data from the file";
+                d = Data_Reader();
+                d.nRx = 4;
+                d.nTx = 2;
+                d.numChirps = obj.numChirps;
+                d.numX = obj.numFrames;
+                d.numADC = obj.adcSamples;
+                calFilePath = cd + "/data/cal" + obj.num + "_" + sprintf("%.4d",obj.serialNumber) + "/" + dca.fileName + "_Raw_0.bin";
+                if d.VerifyFile(calFilePath) == 1
+                    data = d.ReadFile(calFilePath);
+                    obj.textArea.Value = "Empty scene calibration data is valid!";
+                else
+                    data = 0;
+                    obj.textArea.Value = "Empty scene calibration data is NOT valid!";
+                end
+                
+                sarDataEmpty = squeeze(mean(data,[3,4]));
+            elseif selection == "No"
+                % Ignore empty calibration
+                sarDataEmpty = 0;
+            end
         end
     end
 end

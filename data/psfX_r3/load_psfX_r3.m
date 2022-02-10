@@ -1,5 +1,6 @@
 %% Load Necessary Files
-load("empty1LoadFiles.mat","scanner")
+addpath(genpath("./data/ + obj.fileName"))
+load("psfX_r3LoadFiles.mat","scanner")
 
 %% Create Data_Reader
 d = Data_Reader(scanner);

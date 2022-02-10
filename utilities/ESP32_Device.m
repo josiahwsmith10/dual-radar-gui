@@ -80,6 +80,8 @@ classdef ESP32_Device < handle
             
             obj.configurationLamp.Color = "yellow";
             obj.textArea.Value = "Configuring ESP32";
+            drawnow
+            pause(0.1)
             
             % Add any configuration steps here
             

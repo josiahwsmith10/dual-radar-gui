@@ -82,14 +82,18 @@ classdef Data_Reader < handle
                 return
             end
 
-            % Create Calibration Data
-            obj.CreateCalibrationData(obj.radar1)
-            obj.CreateCalibrationData(obj.radar2)
-
             % Load Data
             if obj.LoadData() == -1
                 err = -1;
                 return;
+            end
+
+            % Create Calibration Data
+            if obj.sar.radarSelect == 1 || obj.sar.radarSelect == 3
+                obj.CreateCalibrationData(obj.radar1);
+            end
+            if obj.sar.radarSelect == 2 || obj.sar.radarSelect == 3
+                obj.CreateCalibrationData(obj.radar2);
             end
 
             % Save data
@@ -112,9 +116,15 @@ classdef Data_Reader < handle
             %   -1  :   Error in scan data
             %   1   :   SAR data in numX x numY x numADC
 
-            if obj.sar.radarSelect == 1 || obj.sar.radarSelect == 2
-                obj.sar.sarDataRaw = obj.ReadSARScan();
-                if isempty(obj.sar.sarDataRaw)
+            if obj.sar.radarSelect == 1
+                obj.sar.sarDataRaw1 = obj.ReadSARScan();
+                if isempty(obj.sar.sarDataRaw1)
+                    err = -1;
+                    return;
+                end
+            elseif obj.sar.radarSelect == 2
+                obj.sar.sarDataRaw2 = obj.ReadSARScan();
+                if isempty(obj.sar.sarDataRaw2)
                     err = -1;
                     return;
                 end
@@ -142,7 +152,7 @@ classdef Data_Reader < handle
             %   sarDataRaw  :   SAR data in numX x numY x numADC
             %   []          :   Error reading data
 
-            if nargin < 1
+            if nargin < 2
                 savePath_temp = obj.savePath;
             end
 
@@ -191,6 +201,7 @@ classdef Data_Reader < handle
                             for indRx = 1:obj.nRx
                                 % Read the data
                                 dataChunk = fread(fid,adcDataSize,'uint16','l');
+%                                 dataChunk = fread(fid,adcDataSize,'uint16');
                                 dataChunk = dataChunk - (dataChunk >= 2^15)*2^16;
                                 adcOut = dataChunk(2:2:end) + 1j*dataChunk(1:2:end);
                                 data(indRx,indTx,indChirp,indFrame,:) = adcOut;
@@ -215,7 +226,13 @@ classdef Data_Reader < handle
             % Outputs
             %   1   :   File does have expected size
             %   -1  :   File does not have expected size!
-
+            
+            % Check if file exists
+            if ~exist(filePath,"file")
+                err = -1;
+                return;
+            end
+            
             expectedSize = 4*obj.nTx*obj.nRx*obj.numADC*obj.numChirps*obj.numX;
             if dir(filePath).bytes ~= expectedSize
                 obj.textArea.Value = "ERROR: " + filePath + " does not have the correct size!";
@@ -233,7 +250,7 @@ classdef Data_Reader < handle
             %   1   :   Successfully verified the entire scan
             %   -1  :   Could not verify the scan
 
-            if nargin < 1
+            if nargin < 2
                 savePath_temp = obj.savePath;
             end
 
@@ -297,18 +314,22 @@ classdef Data_Reader < handle
             %   -1  :   Could not create calibration data
 
             % Create calibration data for radar
-            if exist("./cal/cal" + radar.num + "_" + radar.serialNumber + ".mat",'file')
-                load("./cal/cal" + radar.num + "_" + radar.serialNumber,'zBias_m','calData','mult2monoConst');
+            if exist("./cal/cal" + radar.num + "_" + sprintf("%.4d",radar.serialNumber) + ".mat",'file')
+                load("./cal/cal" + radar.num + "_" + sprintf("%.4d",radar.serialNumber),'zBias_m','calData','mult2monoConst','sarDataEmpty');
                 k = reshape(obj.("fmcw" + radar.num).k,1,1,[]);
                 obj.sar.("calData" + radar.num) = permute(calData .* exp(1j*2*k*zBias_m),[4,1,2,5,3]);
                 obj.sar.("mult2monoData" + radar.num) = permute(exp(-1j*k.*mult2monoConst),[4,1,2,5,3]);
+                obj.sar.("sarDataEmpty" + radar.num) = permute(sarDataEmpty,[4,1,2,5,3]);
+                
+                % Calibrate data                
+                obj.sar.("sarDataCal" + radar.num) = obj.sar.("calData" + radar.num) .* obj.sar.("mult2monoData" + radar.num) .* (obj.sar.("sarDataRaw" + radar.num) - obj.sar.("sarDataEmpty" + radar.num));
             else
                 err = -1;
                 obj.textArea.Value = "Warning: could not load radar " + radar.num + " calibration data";
                 return
             end
 
-            err = -1;
+            err = 1;
         end
     end
 end
