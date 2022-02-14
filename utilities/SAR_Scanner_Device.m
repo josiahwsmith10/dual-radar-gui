@@ -313,7 +313,7 @@ classdef SAR_Scanner_Device < handle
             %   -1  :   Scan was unsuccessful!
             
             % temp
-            obj.pauseTol_s = 0.5;
+            obj.pauseTol_s = 1;
             
             % Check AMC4030 is connected
             if ~obj.amc.isConnected
