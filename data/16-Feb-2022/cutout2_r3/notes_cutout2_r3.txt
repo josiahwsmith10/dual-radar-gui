@@ -1,17 +1,17 @@
 %% Scan Notes
-Name: test0
-Location: \data\test0
+Name: cutout2_r3
+Location: \data\cutout2_r3
 
-X-Step Size (mm):	0.9487103
+X-Step Size (mm):	0.4743552
 Y-Step Size (mm):	7.5896825
 
-Num X-Steps:		256
+Num X-Steps:		512
 Num Y-Steps:		32
 
-X-Aperture Size (mm):	241.921129
+X-Aperture Size (mm):	242.395484
 Y-Aperture Size (mm):	235.280157
 
-Periodicity (ms):	4.743552
+Periodicity (ms):	2.371776
 
 Is radar 1:		1
 Is radar 2:		1
@@ -23,5 +23,5 @@ Delta-X (mm)		189.000000
 X-Offset(mm)		0.000000
 
 User Notes:
-cutout1 at 318 
-mm
+Smaller x-step size. Fixed spacing issues in 
+code

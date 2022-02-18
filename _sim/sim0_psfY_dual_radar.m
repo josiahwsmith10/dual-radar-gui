@@ -157,7 +157,7 @@ title("Full Band")
 
 
 %% Save All
-RadarSaveAll(wav,ant,scanner,target,im,"./results/sim1_UTD_RMA.mat")
+RadarSaveAll(wav,ant,scanner,target,im,"./results/sim0_UTD_RMA.mat")
 
 %% Load All
 [wav,ant,scanner,target,im] = RadarLoadAll("./results/sim1_UTD_RMA.mat");

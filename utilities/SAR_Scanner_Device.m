@@ -153,7 +153,7 @@ classdef SAR_Scanner_Device < handle
         end
         
         function Load(obj)
-            obj.savePath = cd + "\data\" + obj.fileName;
+            obj.savePath = cd + "\data\" + date + "\" + obj.fileName;
             % Read in the data
             dataReader = Data_Reader(obj);
             if dataReader.GetScan() == -1
@@ -386,7 +386,7 @@ classdef SAR_Scanner_Device < handle
             end
             
             % Check if scan name exists
-            obj.savePath = cd + "\data\" + obj.fileName;
+            obj.savePath = cd + "\data\" + date + "\" + obj.fileName;
             if exist(obj.savePath,"dir")
                 msg = "Scan titled: """ + obj.fileName + """ already exists! " +...
                     "Are you sure you would like to overwrite this scan?";
@@ -571,7 +571,7 @@ classdef SAR_Scanner_Device < handle
             end
             
             if obj.radarSelect == 1 || obj.radarSelect == 2
-                filePath = cd + "\data\" + obj.fileName + "\" + obj.fileName + "_" + ind + "_Raw_0.bin";
+                filePath = cd + "\data\" + date + "\" + obj.fileName + "\" + obj.fileName + "_" + ind + "_Raw_0.bin";
                 
                 if d.VerifyFile(filePath) == -1
                     obj.textArea.Value = "Data at: " + filePath + " is invalid!";
@@ -581,7 +581,7 @@ classdef SAR_Scanner_Device < handle
             
                 obj.textArea.Value = "Data is correct size!";
             elseif obj.radarSelect == 3
-                filePath = cd + "\data\" + obj.fileName + "\radar1\" + obj.fileName + "_" + ind + "_Raw_0.bin";
+                filePath = cd + "\data\" + date + "\" + obj.fileName + "\radar1\" + obj.fileName + "_" + ind + "_Raw_0.bin";
                 
                 if d.VerifyFile(filePath) == -1
                     obj.textArea.Value = "Data at: " + filePath + " is invalid!";
@@ -590,7 +590,7 @@ classdef SAR_Scanner_Device < handle
                 end
                 
                 
-                filePath = cd + "\data\" + obj.fileName + "\radar2\" + obj.fileName + "_" + ind + "_Raw_0.bin";
+                filePath = cd + "\data\" + date + "\" + obj.fileName + "\radar2\" + obj.fileName + "_" + ind + "_Raw_0.bin";
                 
                 if d.VerifyFile(filePath) == -1
                     obj.textArea.Value = "Data at: " + filePath + " is invalid!";
@@ -638,24 +638,24 @@ classdef SAR_Scanner_Device < handle
             pause(1)
             
             if obj.radarSelect == 1
-                obj.dca1.folderName = obj.fileName;
+                obj.dca1.folderName = date + "\" + obj.fileName;
                 obj.dca1.fileName = obj.fileName + "_" + ind;
                 obj.dca1.Prepare(true);
                 obj.dca1.Start();
                 pause(0.1)
                 obj.radar1.Start();
             elseif obj.radarSelect == 2
-                obj.dca2.folderName = obj.fileName;
+                obj.dca2.folderName = date + "\" + obj.fileName;
                 obj.dca2.fileName = obj.fileName + "_" + ind;
                 obj.dca2.Prepare(true);
                 obj.dca2.Start();
                 pause(0.1)
                 obj.radar2.Start();
             elseif obj.radarSelect == 3
-                obj.dca1.folderName = obj.fileName + "\radar1";
+                obj.dca1.folderName = date + "\" + obj.fileName + "\radar1";
                 obj.dca1.fileName = obj.fileName + "_" + ind;
                 
-                obj.dca2.folderName = obj.fileName + "\radar2";
+                obj.dca2.folderName = date + "\" + obj.fileName + "\radar2";
                 obj.dca2.fileName = obj.fileName + "_" + ind;
                 
                 obj.dca1.Prepare(true);
@@ -672,7 +672,7 @@ classdef SAR_Scanner_Device < handle
         function CreateLoadScanScript(obj)
             % Creates the script .m file to load in the data
             
-            fid = fopen(cd + "\data\" + obj.fileName + "\load_" + obj.fileName + ".m","wt");
+            fid = fopen(cd + "\data\" + date + "\" + obj.fileName + "\load_" + obj.fileName + ".m","wt");
             
             if fid == -1
                 obj.textArea.Value = "Error creating load scan script!";
@@ -685,7 +685,7 @@ classdef SAR_Scanner_Device < handle
             
             fclose(fid);
             
-            obj.savePath = cd + "\data\" + obj.fileName;
+            obj.savePath = cd + "\data\" + date + "\" + obj.fileName;
             scanner.savePath = obj.savePath;
             scanner.fileName = obj.fileName;
             
@@ -719,7 +719,7 @@ classdef SAR_Scanner_Device < handle
             scanner.textArea = [];
             scanner.scanNotes = obj.scanNotes;
             
-            save(cd + "\data\" + obj.fileName + "\" + obj.fileName + "LoadFiles","scanner");
+            save(cd + "\data\" + date + "\" + obj.fileName + "\" + obj.fileName + "LoadFiles","scanner");
         end
         
         function str = createLoadScanScriptStr(obj)
@@ -741,7 +741,7 @@ classdef SAR_Scanner_Device < handle
         function CreateScanNotes(obj)
             % Creates the notes.txt file containing the scan notes
             
-            fid = fopen(cd + "\data\" + obj.fileName + "\notes_" + obj.fileName + ".txt","wt");
+            fid = fopen(cd + "\data\" + date + "\" + obj.fileName + "\notes_" + obj.fileName + ".txt","wt");
             
             if fid == -1
                 obj.textArea.Value = "Error creating scan notes!";
@@ -774,7 +774,7 @@ classdef SAR_Scanner_Device < handle
             str = [
                 "%% Scan Notes"
                 "Name: " + obj.fileName
-                "Location: " + "\data\" + obj.fileName
+                "Location: " + "\data\" + date + "\" + obj.fileName
                 ""
                 sprintf("X-Step Size (mm):\t%1.7f",obj.xStep_m*1e3)
                 sprintf("Y-Step Size (mm):\t%1.7f",obj.yStep_m*1e3)

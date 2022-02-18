@@ -3,7 +3,7 @@ addpath(genpath("../radar-imaging-toolbox-private"))
 addpath(genpath("./"))
 
 %% Load Data
-[wav2,ant2,scanner2,target2,im2] = DualRadarLoadAll("cutout1_r3",2,false);
+[wav2,ant2,scanner2,target2,im2] = DualRadarLoadAll("./data/18-Feb-2022/spheres_r3_1",2,false,4,0.5,0.28);
 
 %% TEMP
 sf = fft(permute(target2.sarData,[2,1,3]),[],3);
@@ -37,13 +37,15 @@ im2.numX = 200;
 im2.numY = 200;
 im2.numZ = 100;
 
-im2.isGPU = true;
-% im2.method = "Uniform 2-D SAR 3-D RMA";
-im2.method = "Uniform 2-D SAR 2-D FFT";
+im2.isGPU = false;
+im2.method = "Uniform 2-D SAR 3-D RMA";
+% im2.method = "Uniform 2-D SAR 2-D FFT";
 
 im2.isMult2Mono = true;
-im2.zRef_m = 0.3;
+im2.zRef_m = 0.28;
 im2.zSlice_m = im2.zRef_m;
+
+% im2.im_method = "none";
 
 % Reconstruct the Image
 im2.Compute();
@@ -51,10 +53,10 @@ im2.Compute();
 im2.dBMin = -10;
 im2.fontSize = 25;
 im2.Display();
-title("Radar 2")
+title(im2.fig.h,"Radar 2")
 
 %% Display the image
 im2.dBMin = -10;
 im2.fontSize = 25;
 im2.Display();
-title("Radar 2")
+title(im2.fig.h,"Radar 2")

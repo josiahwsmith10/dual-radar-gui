@@ -1,0 +1,28 @@
+%% Scan Notes
+Name: empty512_r3
+Location: \data\18-Feb-2022\empty512_r3
+
+X-Step Size (mm):	0.9487103
+Y-Step Size (mm):	7.5896825
+
+Num X-Steps:		512
+Num Y-Steps:		64
+
+X-Aperture Size (mm):	484.790968
+Y-Aperture Size (mm):	478.149996
+
+Periodicity (ms):	4.743552
+
+Is radar 1:		1
+Is radar 2:		1
+
+X-Speed (mm/s)		200
+Y-Speed (mm/s)		50
+
+Delta-X (mm)		189.000000
+X-Offset(mm)		0.000000
+
+User Notes:
+start at (x,y) = (0,0). Large aperture 512x512. Center of 
+spheres ~340 mm. 3x3 mm spacing (ABC). EMPTY SCENE for 
+spheres_rX_2

@@ -1,6 +1,6 @@
 %% Load Necessary Files
 addpath(genpath("./data/ + obj.fileName"))
-load("test1LoadFiles.mat","scanner")
+load("spheres_r3_1LoadFiles.mat","scanner")
 
 %% Create Data_Reader
 d = Data_Reader(scanner);

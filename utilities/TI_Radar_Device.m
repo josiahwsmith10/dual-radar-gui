@@ -152,7 +152,11 @@ classdef TI_Radar_Device < handle
             obj.ant.nTx = 2;
             obj.ant.nRx = 4;
             obj.ant.nVx = 8;
-            obj.ant.tx.xy_m = single([zeros(2,1),5e-3 + [1.5;3.5]*obj.fmcw.lambda_m]);
+            if obj.num == 1
+                obj.ant.tx.xy_m = single([zeros(2,1),5e-3 + [1.5;3.5]*obj.fmcw.lambda_m]);
+            elseif obj.num == 2
+                obj.ant.tx.xy_m = single([zeros(2,1),(2.25 + [1.5;3.5])*obj.fmcw.lambda_m]);
+            end
             obj.ant.rx.xy_m = single([zeros(4,1),(0:0.5:1.5).'*obj.fmcw.lambda_m]);
             obj.ant.vx.xy_m = [];
             obj.ant.vx.dxy_m = [];

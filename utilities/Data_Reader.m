@@ -103,9 +103,9 @@ classdef Data_Reader < handle
             ant(2) = obj.ant2;
             sar = obj.sar; %#ok<PROP>
 
-            save(cd + "\data\" + obj.scanName,"fmcw","ant","sar");
+            save(cd + "\data\" + date + "\" + obj.scanName,"fmcw","ant","sar");
 
-            obj.textArea.Value = "Saved file to: " + cd + "\data\" + obj.scanName;
+            obj.textArea.Value = "Saved file to: " + cd + "\data\" + date + "\" + obj.scanName;
             err = 1;
         end
 
@@ -226,6 +226,7 @@ classdef Data_Reader < handle
             % Outputs
             %   1   :   File does have expected size
             %   -1  :   File does not have expected size!
+            %   0   :   File does not have expected size, but is too large
             
             % Check if file exists
             if ~exist(filePath,"file")
@@ -234,8 +235,14 @@ classdef Data_Reader < handle
             end
             
             expectedSize = 4*obj.nTx*obj.nRx*obj.numADC*obj.numChirps*obj.numX;
-            if dir(filePath).bytes ~= expectedSize
-                obj.textArea.Value = "ERROR: " + filePath + " does not have the correct size!";
+            if dir(filePath).bytes > expectedSize
+                obj.textArea.Value = "Warning: " + filePath + " file size is too large!";
+                warning("Warning: " + filePath + " file size is too large!");
+                err = 0;
+                return
+            elseif dir(filePath).bytes < expectedSize
+                obj.textArea.Value = "ERROR: " + filePath + " file size is too SMALL!";
+                warning("ERROR: " + filePath + " file size is too SMALL!")
                 err = -1;
                 return
             end
