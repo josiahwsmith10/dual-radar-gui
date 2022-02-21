@@ -219,7 +219,7 @@ classdef DCA_Device < handle
             % print record command
             fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe record cf" + obj.num + ".json -q");
             % print start command
-            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe start_record cf" + obj.num + ".json");
+            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe start_record cf" + obj.num + ".json -q");
             fclose(fid);
         end
         
@@ -228,7 +228,7 @@ classdef DCA_Device < handle
             % cd to mmWaveStudio\PostProc\
             fprintf(fid,'%s\n',"cd " + obj.mmWaveStudioPath + "\PostProc\");
             % print stop command
-            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe stop_record cf" + obj.num + ".json");
+            fprintf(fid,'%s\n',".\DCA1000EVM_CLI_Control.exe stop_record cf" + obj.num + ".json -q");
             fclose(fid);
         end
         

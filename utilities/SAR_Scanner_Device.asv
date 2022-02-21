@@ -187,7 +187,6 @@ classdef SAR_Scanner_Device < handle
             if isScanSuccess == 1
                 obj.CreateScanNotes();
                 obj.CreateLoadScanScript();
-                obj.CreateScanTestScripts();
             end
         end
         
@@ -797,116 +796,10 @@ classdef SAR_Scanner_Device < handle
                 sprintf("Delta-X (mm)\t\t%f",obj.DeltaX_m*1e3)
                 sprintf("X-Offset(mm)\t\t%f",obj.xOffset_m*1e3)
                 ""
-                sprintf("Initial-X (mm)\t%f",obj.amc.curr_hor_mm)
-                sprintf("Initial-Y (mm)\t%f",obj.amc.curr_ver_mm)
-                ""
                 "User Notes:"
                 regexprep(obj.scanNotes,'.{1,59}\s','$0\n')
                 ];
         end
     
-        function CreateScanTestScripts(obj)
-            % Creates the scripts for testing the images
-
-            obj.CreateRadar1TestScript();
-            obj.CreateRadar2TestScript();
-            obj.CreateDualRadarTestScript();
-        end
-
-        function CreateRadar1TestScript(obj)
-            % Create the test script for radar 1
-
-            fid = fopen(cd + "\data\" + date + "\" + obj.fileName + "\" + obj.fileName + "_radar1.m","wt");
-            
-            if fid == -1
-                obj.textArea.Value = "Error creating radar 1 test script!";
-                fclose(fid);
-                return
-            end
-            
-            % Print the load scan script string
-            fprintf(fid,'%s\n',obj.createRadar1TestScriptStr());
-            
-            fclose(fid);
-        end
-
-        function CreateRadar2TestScript(obj)
-            % Create the test script for radar 2
-
-            fid = fopen(cd + "\data\" + date + "\" + obj.fileName + "\" + obj.fileName + "_radar2.m","wt");
-            
-            if fid == -1
-                obj.textArea.Value = "Error creating radar 2 test script!";
-                fclose(fid);
-                return
-            end
-            
-            % Print the load scan script string
-            fprintf(fid,'%s\n',obj.createRadar2TestScriptStr());
-            
-            fclose(fid);
-        end
-
-        function CreateDualRadarSRTestScript(obj)
-            % Create the test script for dual-radar
-
-            fid = fopen(cd + "\data\" + date + "\" + obj.fileName + "\" + obj.fileName + "_dual_radar_SR.m","wt");
-            
-            if fid == -1
-                obj.textArea.Value = "Error creating dual radar test script!";
-                fclose(fid);
-                return
-            end
-            
-            % Print the load scan script string
-            fprintf(fid,'%s\n',obj.createDualRadarSRTestScriptStr());
-            
-            fclose(fid);
-        end
-
-        function CreateDualRadarTestScript(obj)
-            % Create the test script for dual-radar
-
-            fid = fopen(cd + "\data\" + date + "\" + obj.fileName + "\" + obj.fileName + "_dual_radar.m","wt");
-            
-            if fid == -1
-                obj.textArea.Value = "Error creating dual radar test script!";
-                fclose(fid);
-                return
-            end
-            
-            % Print the load scan script string
-            fprintf(fid,'%s\n',obj.createDualRadarTestScriptStr());
-            
-            fclose(fid);
-        end
-
-        function str = createRadar1TestScriptStr(obj)
-            str = string(fileread("testScript_radar1.m"));
-            str = strrep(str,newline,'');
-            str = strrep(str,"<fileName>",obj.fileName);
-            str = strrep(str,"<date>",date);
-        end
-
-        function str = createRadar2TestScriptStr(obj)
-            str = string(fileread("testScript_radar2.m"));
-            str = strrep(str,newline,'');
-            str = strrep(str,"<fileName>",obj.fileName);
-            str = strrep(str,"<date>",date);
-        end
-
-        function str = createDualRadarTestScriptStr(obj)
-            str = string(fileread("testScript_dual_radar.m"));
-            str = strrep(str,newline,'');
-            str = strrep(str,"<fileName>",obj.fileName);
-            str = strrep(str,"<date>",date);
-        end
-
-        function str = createDualRadarSRTestScriptStr(obj)
-            str = string(fileread("testScript_dual_radar_SR.m"));
-            str = strrep(str,newline,'');
-            str = strrep(str,"<fileName>",obj.fileName);
-            str = strrep(str,"<date>",date);
-        end
     end
 end

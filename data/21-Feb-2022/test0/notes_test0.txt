@@ -1,0 +1,26 @@
+%% Scan Notes
+Name: test0
+Location: \data\21-Feb-2022\test0
+
+X-Step Size (mm):	0.9487103
+Y-Step Size (mm):	7.5896825
+
+Num X-Steps:		256
+Num Y-Steps:		4
+
+X-Aperture Size (mm):	241.921129
+Y-Aperture Size (mm):	22.769047
+
+Periodicity (ms):	4.743552
+
+Is radar 1:		1
+Is radar 2:		1
+
+X-Speed (mm/s)		200
+Y-Speed (mm/s)		50
+
+Delta-X (mm)		189.000000
+X-Offset(mm)		0.000000
+
+User Notes:
+

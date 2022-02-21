@@ -1,0 +1,29 @@
+%% Scan Notes
+Name: test000
+Location: \data\21-Feb-2022\test000
+
+X-Step Size (mm):	0.9487103
+Y-Step Size (mm):	7.5896825
+
+Num X-Steps:		512
+Num Y-Steps:		2
+
+X-Aperture Size (mm):	484.790968
+Y-Aperture Size (mm):	7.589682
+
+Periodicity (ms):	4.743552
+
+Is radar 1:		1
+Is radar 2:		1
+
+X-Speed (mm/s)		200
+Y-Speed (mm/s)		50
+
+Delta-X (mm)		188.500000
+X-Offset(mm)		0.000000
+
+Initial-X (mm)	0.000000
+Initial-Y (mm)	0.000000
+User Notes:
+Cutout2 at ~330 mm. Correct DeltaX 
+spacing

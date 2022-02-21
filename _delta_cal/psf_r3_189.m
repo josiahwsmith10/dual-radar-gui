@@ -3,7 +3,7 @@ addpath(genpath("../radar-imaging-toolbox-private"))
 addpath(genpath("./"))
 
 %% Load Data
-[wav1,ant1,scanner1,target1,im1] = DualRadarLoadAll(["cutout2_r3_0","21-Feb-2022"],1.5,false,4,0,0.28);
+[wav1,ant1,scanner1,target1,im1] = DualRadarLoadAll(["psfXY_r3_0","21-Feb-2022"],2,false,4,0,0.28);
 
 %% TEMP
 sf = fft(permute(reshape(target1.sarData,256,256,64),[2,1,3]),[],3);
@@ -42,7 +42,7 @@ im1.isGPU = true;
 im1.method = "Uniform 2-D SAR 2-D FFT";
 
 im1.isMult2Mono = true;
-im1.zRef_m = 0.337;
+im1.zRef_m = 0.33;
 im1.zSlice_m = im1.zRef_m;
 
 % im1.im_method = "none";
