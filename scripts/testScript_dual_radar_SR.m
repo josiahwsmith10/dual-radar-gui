@@ -7,7 +7,8 @@ addpath(genpath("./"))
 [wav4,ant4,scanner4,target4,im4] = DualRadarLoadAll(["<fileName>","<date>"],3,false,4,0,0.3);
 
 %% Try Super-Resolution Algorithm
-target4 = DualRadarSR(target4,"./saved/fftnet5.tar",4096,"range");
+% target4 = DualRadarSR(target4,"./saved/fftnet5.tar",4096,"range");
+target4 = DualRadarSR(target4,"./saved/fftnet10.tar",4096,"range","min-max","norm3",4);
 
 %% Set Image Reconstruction Parameters and Create RadarImageReconstruction Object 3D
 im4.nFFTx = 512;
@@ -41,11 +42,11 @@ im4.Compute();
 im4.dBMin = -10;
 im4.fontSize = 25;
 im4.Display();
-title(im4.fig.h,"Dual Radar SR - <fileName>")
+title(im4.fig.h,"Super-Resolution - <fileName_title>")
 
 %% Display the image
 im4.isIso = true;
 im4.dBMin = -15;
 im4.fontSize = 25;
 im4.Display();
-title(im4.fig.h,"Dual Radar - <fileName>")
+title(im4.fig.h,"Super-Resolution - <fileName_title>")

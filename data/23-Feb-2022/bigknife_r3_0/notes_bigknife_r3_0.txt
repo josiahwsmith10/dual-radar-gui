@@ -1,0 +1,30 @@
+%% Scan Notes
+Name: bigknife_r3_0
+Location: \data\23-Feb-2022\bigknife_r3_0
+
+X-Step Size (mm):	0.4744000
+Y-Step Size (mm):	7.5896825
+
+Num X-Steps:		1024
+Num Y-Steps:		100
+
+X-Aperture Size (mm):	485.311200
+Y-Aperture Size (mm):	751.378566
+
+Periodicity (ms):	4.744000
+
+Is radar 1:		1
+Is radar 2:		1
+
+X-Speed (mm/s)		100
+Y-Speed (mm/s)		50
+
+Delta-X (mm)		188.500000
+X-Offset(mm)		0.000000
+
+Initial-X (mm)	100.000000
+Initial-Y (mm)	0.000000
+
+User Notes:
+Big knife at ~320 
+mm

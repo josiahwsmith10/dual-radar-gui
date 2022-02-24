@@ -36,7 +36,7 @@ classdef SAR_Scanner_Device < handle
         isScanning = false      % Boolean whether or not the scan is in progress
         isTwoDirection = 1      % Boolean whether or not to do back and forth (two-direction) scanning
         
-        pauseTol_s = 0.5        % Additional tolerance to wait for the horizontal scan in s
+        pauseTol_s = 2          % Additional tolerance to wait for the horizontal scan in s
         scanTime_min = 0        % Scan time in min
         
         method = ""             % Type of scan, e.g. "Rectilinear"
@@ -313,9 +313,6 @@ classdef SAR_Scanner_Device < handle
             %   1   :   Scan completed successfully 
             %   -1  :   Scan was unsuccessful!
             
-            % temp
-            obj.pauseTol_s = 1;
-            
             % Check AMC4030 is connected
             if ~obj.amc.isConnected
                 obj.textArea.Value = "ERROR: Connect motion controller before starting scan!";
@@ -544,7 +541,7 @@ classdef SAR_Scanner_Device < handle
                 return;
             end
             
-            pause(obj.pauseTol_s*4)
+            pause(obj.pauseTol_s)
                 
             % Check if data size is correct for last horizontal scan
             if obj.VerifySingleHorData(d,indLap*2+1) == -1
@@ -811,6 +808,7 @@ classdef SAR_Scanner_Device < handle
             obj.CreateRadar1TestScript();
             obj.CreateRadar2TestScript();
             obj.CreateDualRadarTestScript();
+            obj.CreateDualRadarSRTestScript();
         end
 
         function CreateRadar1TestScript(obj)
@@ -885,6 +883,7 @@ classdef SAR_Scanner_Device < handle
             str = string(fileread("testScript_radar1.m"));
             str = strrep(str,newline,'');
             str = strrep(str,"<fileName>",obj.fileName);
+            str = strrep(str,"<fileName_title>",strrepp(obj.fileName,"_","\_"));
             str = strrep(str,"<date>",date);
         end
 
@@ -892,6 +891,7 @@ classdef SAR_Scanner_Device < handle
             str = string(fileread("testScript_radar2.m"));
             str = strrep(str,newline,'');
             str = strrep(str,"<fileName>",obj.fileName);
+            str = strrep(str,"<fileName_title>",strrepp(obj.fileName,"_","\_"));
             str = strrep(str,"<date>",date);
         end
 
@@ -899,6 +899,7 @@ classdef SAR_Scanner_Device < handle
             str = string(fileread("testScript_dual_radar.m"));
             str = strrep(str,newline,'');
             str = strrep(str,"<fileName>",obj.fileName);
+            str = strrep(str,"<fileName_title>",strrepp(obj.fileName,"_","\_"));
             str = strrep(str,"<date>",date);
         end
 
@@ -906,6 +907,7 @@ classdef SAR_Scanner_Device < handle
             str = string(fileread("testScript_dual_radar_SR.m"));
             str = strrep(str,newline,'');
             str = strrep(str,"<fileName>",obj.fileName);
+            str = strrep(str,"<fileName_title>",strrepp(obj.fileName,"_","\_"));
             str = strrep(str,"<date>",date);
         end
     end

@@ -103,7 +103,7 @@ classdef Data_Reader < handle
             ant(2) = obj.ant2;
             sar = obj.sar; %#ok<PROP>
 
-            save(cd + "\data\" + date + "\" + obj.scanName,"fmcw","ant","sar");
+            save(cd + "\data\" + date + "\" + obj.scanName,"fmcw","ant","sar","-v7.3");
 
             obj.textArea.Value = "Saved file to: " + cd + "\data\" + date + "\" + obj.scanName;
             err = 1;

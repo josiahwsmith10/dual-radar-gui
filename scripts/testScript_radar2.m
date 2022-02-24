@@ -39,11 +39,11 @@ im2.Compute();
 im2.dBMin = -10;
 im2.fontSize = 25;
 im2.Display();
-title(im2.fig.h,"Radar 2 - <fileName>")
+title(im2.fig.h,"Radar 2 - <fileName_title>")
 
 %% Display the image
 im2.isIso = true;
 im2.dBMin = -15;
 im2.fontSize = 25;
 im2.Display();
-title(im2.fig.h,"Radar 2 - <fileName>")
+title(im2.fig.h,"Radar 2 - <fileName_title>")

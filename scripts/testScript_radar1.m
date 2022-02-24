@@ -39,11 +39,11 @@ im1.Compute();
 im1.dBMin = -10;
 im1.fontSize = 25;
 im1.Display();
-title(im1.fig.h,"Radar 1 - <fileName>")
+title(im1.fig.h,"Radar 1 - <fileName_title>")
 
 %% Display the image
 im1.isIso = true;
 im1.dBMin = -15;
 im1.fontSize = 25;
 im1.Display();
-title(im1.fig.h,"Radar 1 - <fileName>")
+title(im1.fig.h,"Radar 1 - <fileName_title>")
