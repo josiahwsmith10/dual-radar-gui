@@ -2,3 +2,4 @@ _old/
 data/**/*.bin
 data/**/*.csv
 data/**/*mat
+data/*

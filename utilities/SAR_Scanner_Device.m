@@ -269,8 +269,10 @@ classdef SAR_Scanner_Device < handle
             end
             
             % Time in minutes for two direction scanning
-            obj.scanTime_min = ((obj.numY-1)*obj.yStep_m*1e3/obj.amc.ver_speed_mms + ...
-                obj.numY*(obj.pauseTol_s + obj.xMove_m*1e3/obj.amc.hor_speed_mms))/60;
+            hor_time_s = obj.xMove_m*1e3/obj.amc.hor_speed_mms;
+            ver_time_s = obj.yStep_m*1e3/obj.amc.ver_speed_mms; 
+
+            obj.scanTime_min = obj.numY*(1.1 + hor_time_s + ver_time_s + obj.pauseTol_s)/60;
             
             err = 1;
             obj.textArea.Value = "Successfully verified rectilinear scan";
@@ -883,7 +885,7 @@ classdef SAR_Scanner_Device < handle
             str = string(fileread("testScript_radar1.m"));
             str = strrep(str,newline,'');
             str = strrep(str,"<fileName>",obj.fileName);
-            str = strrep(str,"<fileName_title>",strrepp(obj.fileName,"_","\_"));
+            str = strrep(str,"<fileName_title>",strrep(obj.fileName,"_","\_"));
             str = strrep(str,"<date>",date);
         end
 
@@ -891,7 +893,7 @@ classdef SAR_Scanner_Device < handle
             str = string(fileread("testScript_radar2.m"));
             str = strrep(str,newline,'');
             str = strrep(str,"<fileName>",obj.fileName);
-            str = strrep(str,"<fileName_title>",strrepp(obj.fileName,"_","\_"));
+            str = strrep(str,"<fileName_title>",strrep(obj.fileName,"_","\_"));
             str = strrep(str,"<date>",date);
         end
 
@@ -899,7 +901,7 @@ classdef SAR_Scanner_Device < handle
             str = string(fileread("testScript_dual_radar.m"));
             str = strrep(str,newline,'');
             str = strrep(str,"<fileName>",obj.fileName);
-            str = strrep(str,"<fileName_title>",strrepp(obj.fileName,"_","\_"));
+            str = strrep(str,"<fileName_title>",strrep(obj.fileName,"_","\_"));
             str = strrep(str,"<date>",date);
         end
 
@@ -907,7 +909,7 @@ classdef SAR_Scanner_Device < handle
             str = string(fileread("testScript_dual_radar_SR.m"));
             str = strrep(str,newline,'');
             str = strrep(str,"<fileName>",obj.fileName);
-            str = strrep(str,"<fileName_title>",strrepp(obj.fileName,"_","\_"));
+            str = strrep(str,"<fileName_title>",strrep(obj.fileName,"_","\_"));
             str = strrep(str,"<date>",date);
         end
     end
