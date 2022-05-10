@@ -50,6 +50,7 @@ classdef TI_Radar_Device < handle
         pri_ms_field                % Edit field in GUI for pri_ms
         HardwareTrigger_checkbox    % Check box in GUI for whether or not to use HW trigger
         serialNumber_field          % Edit field in GUI for serialNumber
+        COMPort_field               % Edit field in GUI for recent COMPort
         
         fmcw                        % Struct to hold chirp parameters
         ant                         % Struct to hold the antenna array properties
@@ -80,6 +81,7 @@ classdef TI_Radar_Device < handle
                     
                     pause(0.01)
                     obj.connectionLamp.Color = 'green';
+                    obj.COMPort_field.Value = serialPortName;
                 catch
                     obj.textArea.Value = "Unable to connect to " +  serialPortName + " is another application connected?";
                     err = -1;

@@ -1,0 +1,16 @@
+function askOpenGuide(app)
+if ~app.isSkipGuide.Value
+    selection = uiconfirm(app.UIFigure, ...
+        "This may be your first time. Would you like to open the User Guide?", ...
+        "Open User Guide?", ...
+        "Options",{'Yes','No','Do Not Show Again'}, ...
+        "DefaultOption",1, ...
+        "CancelOption",2);
+
+    switch selection
+        case "Yes"
+            winopen("doc/Dual_Radar_GUI_User_Guide.pdf")
+        case 'Do Not Show Again'
+            app.isSkipGuide.Value = true;
+    end
+end

@@ -64,6 +64,7 @@ classdef AMC4030_Device < handle
         curr_rot_field = struct("Value",[])          % Edit field in the GUI for current rotational position in mm
         hor_max_field = struct("Value",[])           % Edit field in the GUI for the maximum horizontal position in mm
         ver_max_field = struct("Value",[])           % Edit field in the GUi for the maximum vertical position in mm
+        COMPort_field                                % Edit field in GUI for recent COMPort
     end
     
     methods
@@ -172,6 +173,7 @@ classdef AMC4030_Device < handle
                     if libisloaded('AMC4030') && err == 1
                         obj.isConnected = true;
                         obj.connectionLamp.Color = 'green';
+                        obj.COMPort_field.Value = serialPortName;
                         obj.textArea.Value = "Connected AMC4030 at " + serialPortName;
                         
                         if obj.isApp

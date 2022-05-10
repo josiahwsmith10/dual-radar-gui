@@ -31,6 +31,7 @@ classdef ESP32_Device < handle
         DeltaX_mm_field         % Edit field in the GUI for DeltaX_mm
         numX_field              % Edit field in the GUI for numX
         numY_field              % Edit field in the GUI for numY
+        COMPort_field           % Edit field in GUI for recent COMPort
         
         % Radar 1 and 2 checkboxes
         isRadar1_checkbox       % Checkbox in GUI for radar1
@@ -110,6 +111,7 @@ classdef ESP32_Device < handle
                 
                 obj.isConnected = true;
                 obj.connectionLamp.Color = 'green';
+                obj.COMPort_field.Value = serialPortName;
                 obj.textArea.Value = "Successfully connected ESP32 at COM" + obj.COMPortNum;
                 
                 if obj.isApp

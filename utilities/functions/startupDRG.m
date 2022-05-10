@@ -1,6 +1,12 @@
 function startupDRG(app)
 % Startup function for the dual-radar-gui MATLAB application
 
+% Load most recent settings
+app = loadFields(app);
+
+% Prompt user for guide
+askOpenGuide(app);
+
 % Create dca1 and dca2 and set up
 app.dca1 = DCA_Device(1);
 app.dca2 = DCA_Device(2);
