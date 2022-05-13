@@ -27,6 +27,8 @@ app.amc.curr_ver_field = app.YPositionmmEditField;
 app.amc.hor_max_field = app.XMaxSizemmEditField;
 app.amc.ver_max_field = app.YMaxSizemmEditField;
 
+app.amc.COMPort_field = app.AMC4030COMEditField;
+
 app.amc.isApp = true;
 app.amc.Update();
 end

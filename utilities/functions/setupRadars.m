@@ -22,6 +22,8 @@ app.radar1.serialNumber_field = app.SerialNumberEditField;
 
 app.radar1.HardwareTrigger_checkbox = app.HardwareTriggerCheckBox;
 
+app.radar1.COMPort_field = app.Radar1COMEditField;
+
 app.radar1.isApp = true;
 app.radar1.Update();
 
@@ -45,6 +47,8 @@ app.radar2.pri_ms_field = app.PeriodicitymsEditField_2;
 app.radar2.serialNumber_field = app.SerialNumberEditField_2;
 
 app.radar2.HardwareTrigger_checkbox = app.HardwareTriggerCheckBox_2;
+
+app.radar2.COMPort_field = app.Radar2COMEditField;
 
 app.radar2.isApp = true;
 app.radar2.Update();

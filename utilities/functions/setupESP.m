@@ -17,6 +17,8 @@ app.esp.DeltaX_mm_field = app.DeltaXmmEditField;
 app.esp.isRadar1_checkbox = app.Radar1CheckBox;
 app.esp.isRadar2_checkbox = app.Radar2CheckBox;
 
+app.esp.COMPort_field = app.ESP32COMEditField;
+
 app.esp.isApp = true;
 app.esp.Update();
 end
