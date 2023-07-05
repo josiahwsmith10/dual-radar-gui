@@ -1,5 +1,5 @@
 _old/
-data/**/*.bin
-data/**/*.csv
-data/**/*mat
-data/*
+data/
+doc/
+cal/
+*.DS_Store
