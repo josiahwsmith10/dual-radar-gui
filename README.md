@@ -5,7 +5,7 @@ Graphical user interface for controlling the dual radar scanner used in paper ti
 Please refer to [dual-radar-synchronizer](https://github.com/josiahwsmith10/dual-radar-synchronizer) for ESP32 code for synchronizing dual radar platform
 
 ## TODO
-- Change references to radar-imaging-toolbox-prive repository to use [THz-and-Sub-THz-Imaging-Toolbox](https://github.com/josiahwsmith10/THz-and-Sub-THz-Imaging-Toolbox)
+- Change references to radar-imaging-toolbox-private repository to use [THz-and-Sub-THz-Imaging-Toolbox](https://github.com/josiahwsmith10/THz-and-Sub-THz-Imaging-Toolbox)
 - Release pretrained models and code
 
 # Publication and Citation
